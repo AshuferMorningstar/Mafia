@@ -7,12 +7,38 @@ let playerName = null;
 
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', function() {
-    connectToServer();
+    showSplashScreen();
 });
+
+// Splash Screen Functions
+function showSplashScreen() {
+    // Show splash screen for 3 seconds, then fade to main game
+    setTimeout(() => {
+        hideSplashScreen();
+    }, 3000);
+}
+
+function hideSplashScreen() {
+    const splashScreen = document.getElementById('splash-screen');
+    const topLogoSection = document.getElementById('top-logo-section');
+    const welcomeScreen = document.getElementById('welcome-screen');
+    
+    // Fade out splash screen
+    splashScreen.classList.add('fade-out');
+    
+    // After fade animation, show top logo and welcome screen, then connect to server
+    setTimeout(() => {
+        splashScreen.style.display = 'none';
+        topLogoSection.style.display = 'block';
+        welcomeScreen.style.display = 'flex';
+        welcomeScreen.classList.add('active');
+        connectToServer();
+    }, 500);
+}
 
 function connectToServer() {
     // Connect to the backend server
-    socket = io('http://localhost:5000');
+    socket = io('http://localhost:5001');
     
     socket.on('connect', function() {
         console.log('Connected to server');
@@ -42,10 +68,25 @@ function connectToServer() {
     socket.on('vote_confirmed', handleVoteConfirmed);
     socket.on('night_action_received', handleNightActionReceived);
     socket.on('vote_update', handleVoteUpdate);
+    socket.on('chat_message', handleChatMessage);
+    socket.on('speaker_setting_changed', handleSpeakerSettingChanged);
+}
+
+// Navigation functions
+function showCreateGame() {
+    showScreen('create-game-screen');
+}
+
+function showJoinGame() {
+    showScreen('join-game-screen');
+}
+
+function goToWelcome() {
+    showScreen('welcome-screen');
 }
 
 function createGame() {
-    const name = document.getElementById('player-name').value.trim();
+    const name = document.getElementById('create-player-name').value.trim();
     if (!name) {
         addMessage('Please enter your name', 'error');
         return;
@@ -53,7 +94,7 @@ function createGame() {
     
     playerName = name;
     
-    fetch('http://localhost:5000/api/create-game', {
+    fetch('http://localhost:5001/api/create-game', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -74,12 +115,8 @@ function createGame() {
     });
 }
 
-function showJoinGame() {
-    document.getElementById('join-game-form').classList.remove('hidden');
-}
-
 function joinGame() {
-    const name = document.getElementById('player-name').value.trim();
+    const name = document.getElementById('join-player-name').value.trim();
     const code = document.getElementById('room-code').value.trim().toUpperCase();
     
     if (!name || !code) {
@@ -129,20 +166,62 @@ function updateLobby() {
             playerDiv.classList.add('you');
         }
         
+        let badges = '';
+        if (player.id === gameState.host_id) {
+            badges += '<span class="host-badge">👑 Host</span>';
+        }
+        if (player.id === gameState.speaker_id) {
+            badges += '<span class="speaker-badge">🎙️ Speaker</span>';
+        }
+        
         playerDiv.innerHTML = `
-            <span>${player.name} ${player.id === playerId ? '(You)' : ''}</span>
+            <span>${player.name} ${player.id === playerId ? '(You)' : ''} ${badges}</span>
             <div>
-                ${gameState.speaker_id === player.id ? '🎙️ Speaker' : ''}
-                ${gameState.speaker_id !== player.id ? `<button class="btn" onclick="setSpeaker('${player.id}')">Make Speaker</button>` : ''}
+                ${gameState.speaker_id !== player.id && gameState.you_are_host && !gameState.game_settings?.random_speaker ? 
+                    `<button class="btn" onclick="setSpeaker('${player.id}')">Make Speaker</button>` : ''}
             </div>
         `;
         container.appendChild(playerDiv);
     });
     
+    // Show/hide speaker settings based on host status
+    const speakerSettings = document.getElementById('speaker-settings');
+    if (gameState.you_are_host) {
+        speakerSettings.classList.add('host-only');
+        
+        // Update random speaker toggle
+        const randomToggle = document.getElementById('random-speaker-toggle');
+        randomToggle.checked = gameState.game_settings?.random_speaker || false;
+        
+        // Show/hide manual controls based on random speaker setting
+        const manualControls = document.getElementById('manual-speaker-controls');
+        if (gameState.game_settings?.random_speaker) {
+            manualControls.style.display = 'block';
+        } else {
+            manualControls.style.display = 'none';
+        }
+    } else {
+        speakerSettings.classList.remove('host-only');
+    }
+    
     // Enable start button if we have enough players and current player is speaker
     const startBtn = document.getElementById('start-game-btn');
-    const canStart = gameState.alive_players.length >= 6 && gameState.speaker_id === playerId;
+    const speakerNotice = document.getElementById('speaker-requirement');
+    const canStart = gameState.alive_players.length >= 6 && gameState.you_are_speaker;
+    const hasEnoughPlayers = gameState.alive_players.length >= 6;
+    const hasSpeaker = gameState.speaker_id !== null;
+    
     startBtn.disabled = !canStart;
+    
+    // Show/hide speaker requirement notice
+    if (hasEnoughPlayers && !hasSpeaker && gameState.you_are_host) {
+        speakerNotice.classList.remove('hidden');
+    } else {
+        speakerNotice.classList.add('hidden');
+    }
+    
+    // Update chat messages
+    updateChatMessages();
 }
 
 function setSpeaker(speakerId) {
@@ -152,7 +231,12 @@ function setSpeaker(speakerId) {
 function handleSpeakerSet(data) {
     gameState = data.game_state;
     updateLobby();
-    addMessage(`${data.speaker_name} is now the speaker`, 'success');
+    
+    if (data.was_random) {
+        addMessage(`${data.speaker_name} was randomly selected as the speaker! 🎲`, 'success');
+    } else {
+        addMessage(`${data.speaker_name} is now the speaker`, 'success');
+    }
 }
 
 function startGame() {
@@ -218,9 +302,13 @@ function updateGameScreen() {
         roleDesc.innerHTML = `<p><strong>Your Mission:</strong> ${roleDescriptions[gameState.your_role]}</p>`;
         
         // Show fellow killers if player is a killer
-        if (gameState.your_role === 'killer' && gameState.fellow_killers) {
-            const fellowKillers = gameState.fellow_killers.map(k => k.name).join(', ');
-            roleDesc.innerHTML += `<p><strong>Fellow Killers:</strong> ${fellowKillers}</p>`;
+        if (gameState.your_role === 'killer' && gameState.fellow_killers && gameState.fellow_killers.length > 0) {
+            const fellowKillers = gameState.fellow_killers.map(k => 
+                `<span class="role-badge role-killer">${k.name}</span>`
+            ).join(' ');
+            roleDesc.innerHTML += `<p><strong>🔪 Fellow Killers:</strong><br>${fellowKillers}</p>`;
+        } else if (gameState.your_role === 'killer') {
+            roleDesc.innerHTML += `<p><strong>🔪 Fellow Killers:</strong> You are the only killer!</p>`;
         }
     }
     
@@ -232,6 +320,9 @@ function updateGameScreen() {
     
     // Update speaker controls
     updateSpeakerControls();
+    
+    // Update chat messages
+    updateChatMessages();
 }
 
 function updatePlayerLists() {
@@ -243,6 +334,14 @@ function updatePlayerLists() {
     aliveContainer.innerHTML = '';
     deadContainer.innerHTML = '';
     
+    const roleEmojis = {
+        'civilian': '👤',
+        'killer': '🔪',
+        'doctor': '🩺',
+        'detective': '🔍'
+    };
+    
+    // Display alive players
     gameState.alive_players.forEach(player => {
         const playerDiv = document.createElement('div');
         playerDiv.className = 'player-item';
@@ -250,27 +349,37 @@ function updatePlayerLists() {
             playerDiv.classList.add('you');
         }
         
+        let roleDisplay = '';
+        if (player.role) {
+            const roleName = player.role.charAt(0).toUpperCase() + player.role.slice(1);
+            roleDisplay = `<span class="role-badge role-${player.role}">${roleEmojis[player.role]} ${roleName}</span>`;
+        }
+        
         playerDiv.innerHTML = `
-            <span>${player.name} ${player.id === playerId ? '(You)' : ''}</span>
-            <span>${player.votes > 0 ? `📊 ${player.votes} votes` : ''}</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <span>${player.name} ${player.id === playerId ? '(You)' : ''}</span>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    ${roleDisplay}
+                    ${player.votes > 0 ? `<span>📊 ${player.votes} votes</span>` : ''}
+                </div>
+            </div>
         `;
         aliveContainer.appendChild(playerDiv);
     });
     
+    // Display dead players (always show roles)
     gameState.dead_players.forEach(player => {
         const playerDiv = document.createElement('div');
         playerDiv.className = 'player-item dead';
         
-        const roleEmojis = {
-            'civilian': '👤',
-            'killer': '🔪',
-            'doctor': '🩺',
-            'detective': '🔍'
-        };
+        const roleName = player.role.charAt(0).toUpperCase() + player.role.slice(1);
+        const roleDisplay = `<span class="role-badge role-${player.role}">${roleEmojis[player.role]} ${roleName}</span>`;
         
         playerDiv.innerHTML = `
-            <span>${player.name}</span>
-            <span>${roleEmojis[player.role]} ${player.role.charAt(0).toUpperCase() + player.role.slice(1)}</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <span>${player.name}</span>
+                ${roleDisplay}
+            </div>
         `;
         deadContainer.appendChild(playerDiv);
     });
@@ -366,7 +475,122 @@ function vote(targetId) {
 function updateSpeakerControls() {
     const speakerControls = document.getElementById('speaker-controls');
     
-    if (gameState.speaker_id === playerId) {
+    if (gameState.you_are_speaker) {
+        speakerControls.classList.remove('hidden');
+        
+        const processNightBtn = document.getElementById('process-night-btn');
+        const startVotingBtn = document.getElementById('start-voting-btn');
+        const processVotesBtn = document.getElementById('process-votes-btn');
+        
+        processNightBtn.disabled = gameState.phase !== 'night';
+        startVotingBtn.disabled = gameState.phase !== 'day';
+        processVotesBtn.disabled = gameState.phase !== 'voting';
+    } else {
+        speakerControls.classList.add('hidden');
+    }
+}
+
+// Chat Functions
+function sendChatMessage() {
+    const currentScreen = document.querySelector('.game-screen.active').id;
+    let inputId = '';
+    
+    if (currentScreen === 'lobby-screen') {
+        inputId = 'lobby-chat-input';
+    } else if (currentScreen === 'game-screen') {
+        inputId = 'chat-input';
+    }
+    
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    
+    const message = input.value.trim();
+    if (!message) return;
+    
+    socket.emit('send_chat_message', { message: message });
+    input.value = '';
+}
+
+function handleChatMessage(data) {
+    addChatMessage(data.message);
+}
+
+function addChatMessage(message) {
+    const currentScreen = document.querySelector('.game-screen.active').id;
+    let containerId = '';
+    
+    if (currentScreen === 'lobby-screen') {
+        containerId = 'lobby-chat-messages';
+    } else if (currentScreen === 'game-screen') {
+        containerId = 'chat-messages';
+    }
+    
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `chat-message ${message.type}`;
+    
+    const time = new Date(message.timestamp * 1000).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+    
+    if (message.type === 'system') {
+        messageDiv.innerHTML = `
+            <div class="chat-message-header">
+                <span class="chat-message-sender">System</span>
+                <span class="chat-message-time">${time}</span>
+            </div>
+            <div class="chat-message-content">${message.message}</div>
+        `;
+    } else {
+        messageDiv.innerHTML = `
+            <div class="chat-message-header">
+                <span class="chat-message-sender">${message.player_name}</span>
+                <span class="chat-message-time">${time}</span>
+            </div>
+            <div class="chat-message-content">${message.message}</div>
+        `;
+    }
+    
+    container.appendChild(messageDiv);
+    container.scrollTop = container.scrollHeight;
+    
+    // Remove old messages to prevent memory issues
+    const messages = container.children;
+    if (messages.length > 100) {
+        container.removeChild(messages[0]);
+    }
+}
+
+function updateChatMessages() {
+    if (!gameState || !gameState.chat_messages) return;
+    
+    const currentScreen = document.querySelector('.game-screen.active').id;
+    let containerId = '';
+    
+    if (currentScreen === 'lobby-screen') {
+        containerId = 'lobby-chat-messages';
+    } else if (currentScreen === 'game-screen') {
+        containerId = 'chat-messages';
+    }
+    
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    // Clear and rebuild chat messages
+    container.innerHTML = '';
+    
+    gameState.chat_messages.forEach(message => {
+        addChatMessage(message);
+    });
+}
+
+function updateSpeakerControls() {
+    const speakerControls = document.getElementById('speaker-controls');
+    
+    if (gameState.you_are_speaker) {
         speakerControls.classList.remove('hidden');
         
         const processNightBtn = document.getElementById('process-night-btn');
@@ -438,20 +662,27 @@ function handleGameOver(data) {
     const finalContainer = document.getElementById('final-players-container');
     finalContainer.innerHTML = '';
     
-    [...gameState.alive_players, ...gameState.dead_players].forEach(player => {
+    const roleEmojis = {
+        'civilian': '👤',
+        'killer': '🔪',
+        'doctor': '🩺',
+        'detective': '🔍'
+    };
+    
+    // Combine all players and sort by alive status
+    const allPlayers = [...gameState.alive_players, ...gameState.dead_players];
+    allPlayers.forEach(player => {
         const playerDiv = document.createElement('div');
         playerDiv.className = `player-item ${!player.is_alive ? 'dead' : ''}`;
         
-        const roleEmojis = {
-            'civilian': '👤',
-            'killer': '🔪',
-            'doctor': '🩺',
-            'detective': '🔍'
-        };
+        const roleName = player.role ? player.role.charAt(0).toUpperCase() + player.role.slice(1) : 'Unknown';
+        const roleDisplay = player.role ? `${roleEmojis[player.role]} ${roleName}` : '❓ Unknown';
         
         playerDiv.innerHTML = `
-            <span>${player.name}</span>
-            <span>${roleEmojis[player.role]} ${player.role.charAt(0).toUpperCase() + player.role.slice(1)}</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <span>${player.name} ${player.is_alive ? '(Alive)' : '(Dead)'}</span>
+                <span class="role-badge role-${player.role || 'unknown'}">${roleDisplay}</span>
+            </div>
         `;
         finalContainer.appendChild(playerDiv);
     });
@@ -510,7 +741,22 @@ function goToWelcome() {
 function showScreen(screenId) {
     const screens = document.querySelectorAll('.game-screen');
     screens.forEach(screen => screen.classList.remove('active'));
-    document.getElementById(screenId).classList.add('active');
+    
+    const welcomeScreen = document.getElementById('welcome-screen');
+    const mainContainer = document.getElementById('main-container');
+    
+    if (screenId === 'welcome-screen') {
+        // Show welcome screen and hide main container
+        welcomeScreen.style.display = 'flex';
+        welcomeScreen.classList.add('active');
+        mainContainer.style.display = 'none';
+    } else {
+        // Hide welcome screen and show main container with the selected screen
+        welcomeScreen.style.display = 'none';
+        welcomeScreen.classList.remove('active');
+        mainContainer.style.display = 'block';
+        document.getElementById(screenId).classList.add('active');
+    }
 }
 
 function addMessage(message, type = 'info') {
@@ -564,3 +810,52 @@ document.getElementById('room-code').addEventListener('keypress', function(e) {
         joinGame();
     }
 });
+
+// Handle enter key for chat inputs
+document.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        const activeElement = document.activeElement;
+        if (activeElement && (activeElement.id === 'lobby-chat-input' || activeElement.id === 'chat-input')) {
+            sendChatMessage();
+        }
+    }
+});
+
+// Role summary toggle function
+function toggleRoleSummary() {
+    const content = document.getElementById('role-info-content');
+    const toggle = document.getElementById('role-summary-toggle');
+    
+    if (content.classList.contains('collapsed')) {
+        content.classList.remove('collapsed');
+        toggle.classList.remove('collapsed');
+        toggle.textContent = '▼';
+    } else {
+        content.classList.add('collapsed');
+        toggle.classList.add('collapsed');
+        toggle.textContent = '▶';
+    }
+}
+
+// Speaker Settings Functions
+function toggleRandomSpeaker() {
+    const toggle = document.getElementById('random-speaker-toggle');
+    const enabled = toggle.checked;
+    
+    socket.emit('toggle_random_speaker', { enabled: enabled });
+}
+
+function assignRandomSpeakerNow() {
+    socket.emit('assign_random_speaker_now', {});
+}
+
+function handleSpeakerSettingChanged(data) {
+    gameState = data.game_state;
+    updateLobby();
+    
+    if (data.random_speaker_enabled) {
+        addMessage('Random speaker assignment enabled', 'success');
+    } else {
+        addMessage('Random speaker assignment disabled', 'success');
+    }
+}

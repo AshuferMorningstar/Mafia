@@ -54,6 +54,42 @@ def handle_disconnect():
     print(f'Client disconnected: {request.sid}')
     game_manager.leave_game(request.sid)
 
+@socketio.on('send_chat_message')
+def handle_send_chat_message(data):
+    """Handle chat messages from players"""
+    game = game_manager.get_game_by_socket(request.sid)
+    player = game_manager.get_player_by_socket(request.sid)
+    
+    if not game or not player:
+        emit('error', {'message': 'Game or player not found'})
+        return
+    
+    message = data.get('message', '').strip()
+    if not message or len(message) > 500:  # Limit message length
+        emit('error', {'message': 'Invalid message'})
+        return
+    
+    # Check if player can chat (alive players during day/voting, dead players if allowed)
+    can_chat = False
+    if player.is_alive and game.phase in [GamePhase.DAY, GamePhase.VOTING]:
+        can_chat = True
+    elif not player.is_alive and game.game_settings.get('allow_dead_chat', True):
+        can_chat = True
+    elif player.id == game.speaker_id:  # Speaker can always chat
+        can_chat = True
+    
+    if not can_chat:
+        emit('error', {'message': 'You cannot chat at this time'})
+        return
+    
+    # Add message to game
+    chat_message = game.add_chat_message(player.name, message)
+    
+    # Broadcast to all players
+    socketio.emit('chat_message', {
+        'message': chat_message.to_dict()
+    }, room=game.room_code)
+
 @socketio.on('join_game')
 def handle_join_game(data):
     """Handle player joining a game"""
@@ -85,6 +121,9 @@ def handle_join_game(data):
         'player': player.to_dict(),
         'game_state': game.get_game_state()
     }, room=room_code)
+    
+    # Add system message about player joining
+    game.add_system_message(f"{player.name} joined the game")
 
 @socketio.on('set_speaker')
 def handle_set_speaker(data):
@@ -100,6 +139,11 @@ def handle_set_speaker(data):
         emit('error', {'message': 'Cannot change speaker after game has started'})
         return
     
+    # Only host can change speaker initially, or current speaker can transfer
+    if player.id != game.host_id and player.id != game.speaker_id:
+        emit('error', {'message': 'Only the host or current speaker can change the speaker'})
+        return
+    
     speaker_id = data.get('speaker_id')
     if speaker_id not in game.players:
         emit('error', {'message': 'Invalid speaker selection'})
@@ -107,11 +151,81 @@ def handle_set_speaker(data):
     
     game.set_speaker(speaker_id)
     
+    # Add system message
+    game.add_system_message(f"{game.players[speaker_id].name} is now the speaker")
+    
     # Notify all players
     socketio.emit('speaker_set', {
         'speaker_id': speaker_id,
         'speaker_name': game.players[speaker_id].name,
         'game_state': game.get_game_state()
+    }, room=game.room_code)
+
+@socketio.on('toggle_random_speaker')
+def handle_toggle_random_speaker(data):
+    """Toggle random speaker assignment setting"""
+    game = game_manager.get_game_by_socket(request.sid)
+    player = game_manager.get_player_by_socket(request.sid)
+    
+    if not game or not player:
+        emit('error', {'message': 'Game or player not found'})
+        return
+    
+    if game.phase != GamePhase.WAITING:
+        emit('error', {'message': 'Cannot change speaker settings after game has started'})
+        return
+    
+    # Only host can change speaker settings
+    if player.id != game.host_id:
+        emit('error', {'message': 'Only the host can change speaker settings'})
+        return
+    
+    enabled = data.get('enabled', True)
+    game.set_random_speaker_setting(enabled)
+    
+    # Add system message
+    if enabled:
+        game.add_system_message("Random speaker assignment enabled - speaker will be chosen randomly at game start")
+    else:
+        game.add_system_message("Random speaker assignment disabled - host can manually assign speaker")
+    
+    # Notify all players
+    socketio.emit('speaker_setting_changed', {
+        'random_speaker_enabled': enabled,
+        'game_state': game.get_game_state()
+    }, room=game.room_code)
+
+@socketio.on('assign_random_speaker_now')
+def handle_assign_random_speaker_now(data):
+    """Immediately assign a random speaker"""
+    game = game_manager.get_game_by_socket(request.sid)
+    player = game_manager.get_player_by_socket(request.sid)
+    
+    if not game or not player:
+        emit('error', {'message': 'Game or player not found'})
+        return
+    
+    if game.phase != GamePhase.WAITING:
+        emit('error', {'message': 'Cannot change speaker after game has started'})
+        return
+    
+    # Only host can assign random speaker
+    if player.id != game.host_id:
+        emit('error', {'message': 'Only the host can assign a random speaker'})
+        return
+    
+    if len(game.players) < 2:
+        emit('error', {'message': 'Need at least 2 players to assign random speaker'})
+        return
+    
+    game.assign_random_speaker()
+    
+    # Notify all players
+    socketio.emit('speaker_set', {
+        'speaker_id': game.speaker_id,
+        'speaker_name': game.players[game.speaker_id].name,
+        'game_state': game.get_game_state(),
+        'was_random': True
     }, room=game.room_code)
 
 @socketio.on('start_game')
@@ -139,6 +253,9 @@ def handle_start_game(data):
     
     # Start night phase
     game.start_night_phase()
+    
+    # Add system message about game start
+    game.add_system_message("🎮 Game has started! Check your role and prepare for the night phase.")
     
     # Notify all players with their roles
     for player_id, game_player in game.players.items():
@@ -384,5 +501,5 @@ def handle_get_game_state(data):
 
 if __name__ == '__main__':
     print("🎲 Mafia Game Server Starting...")
-    print("📡 WebSocket server running on http://localhost:5000")
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+    print("📡 WebSocket server running on http://localhost:5001")
+    socketio.run(app, host='0.0.0.0', port=5001, debug=True)

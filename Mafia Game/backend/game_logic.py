@@ -1,3 +1,4 @@
+
 from enum import Enum
 from typing import Dict, List, Optional, Set
 import uuid
@@ -25,7 +26,7 @@ class Player:
         self.is_alive = True
         self.votes = 0
         
-    def to_dict(self, include_role=False):
+    def to_dict(self, include_role=False, show_role_to_player=None):
         data = {
             'id': self.id,
             'name': self.name,
@@ -34,7 +35,45 @@ class Player:
         }
         if include_role:
             data['role'] = self.role.value if self.role else None
+        elif show_role_to_player and self.should_show_role_to(show_role_to_player):
+            data['role'] = self.role.value if self.role else None
         return data
+    
+    def should_show_role_to(self, other_player):
+        """Determine if this player's role should be visible to another player"""
+        if not self.role or not other_player.role:
+            return False
+        
+        # Dead players' roles are visible to everyone
+        if not self.is_alive:
+            return True
+            
+        # Killers can see other killers
+        if (self.role == Role.KILLER and other_player.role == Role.KILLER and 
+            self.is_alive and other_player.is_alive):
+            return True
+            
+        # Players can always see their own role
+        if self.id == other_player.id:
+            return True
+            
+        return False
+
+class ChatMessage:
+    def __init__(self, player_name: str, message: str, message_type: str = "normal", timestamp: float = None):
+        import time
+        self.player_name = player_name
+        self.message = message
+        self.type = message_type  # "normal", "system", "whisper", "announcement"
+        self.timestamp = timestamp or time.time()
+        
+    def to_dict(self):
+        return {
+            'player_name': self.player_name,
+            'message': self.message,
+            'type': self.type,
+            'timestamp': self.timestamp
+        }
 
 class Game:
     def __init__(self, room_code: str):
@@ -48,11 +87,68 @@ class Game:
         self.saved_player: Optional[str] = None
         self.investigation_result: Optional[bool] = None
         self.winner: Optional[str] = None
+        self.chat_messages: List[ChatMessage] = []
+        self.host_id: Optional[str] = None  # Player who created the room
+        self.game_settings = {
+            'discussion_time': 300,  # 5 minutes for day discussion
+            'voting_time': 120,      # 2 minutes for voting
+            'allow_dead_chat': True,   # Allow dead players to chat
+            'random_speaker': True     # Randomly assign speaker at game start
+        }
         
     def add_player(self, name: str, socket_id: str) -> Player:
         player = Player(name, socket_id)
         self.players[player.id] = player
+        
+        # Set first player as host
+        if not self.host_id:
+            self.host_id = player.id
+            # Only set as speaker if random_speaker is disabled
+            if not self.game_settings['random_speaker']:
+                self.speaker_id = player.id
+            
         return player
+    
+    def set_random_speaker_setting(self, enabled: bool):
+        """Toggle random speaker assignment"""
+        self.game_settings['random_speaker'] = enabled
+        
+        # If enabling random speaker and we're still in waiting phase, clear current speaker
+        if enabled and self.phase == GamePhase.WAITING:
+            self.speaker_id = None
+        # If disabling and no speaker is set, make host the speaker
+        elif not enabled and not self.speaker_id and self.host_id:
+            self.speaker_id = self.host_id
+    
+    def assign_random_speaker(self):
+        """Randomly assign a speaker from available players"""
+        if self.players:
+            available_players = list(self.players.keys())
+            self.speaker_id = random.choice(available_players)
+            self.add_system_message(f"{self.players[self.speaker_id].name} has been randomly selected as the speaker!")
+    
+    def add_chat_message(self, player_name: str, message: str, message_type: str = "normal"):
+        """Add a chat message to the game"""
+        chat_msg = ChatMessage(player_name, message, message_type)
+        self.chat_messages.append(chat_msg)
+        
+        # Keep only last 100 messages to prevent memory issues
+        if len(self.chat_messages) > 100:
+            self.chat_messages = self.chat_messages[-100:]
+        
+        return chat_msg
+    
+    def add_system_message(self, message: str):
+        """Add a system message to chat"""
+        return self.add_chat_message("System", message, "system")
+    
+    def get_chat_messages(self, include_system: bool = True) -> List[Dict]:
+        """Get chat messages, optionally filtering system messages"""
+        messages = []
+        for msg in self.chat_messages:
+            if include_system or msg.type != "system":
+                messages.append(msg.to_dict())
+        return messages
     
     def remove_player(self, player_id: str):
         if player_id in self.players:
@@ -67,6 +163,13 @@ class Game:
         
         if player_count < 6:
             return False, "Need at least 6 players to start"
+        
+        # Assign random speaker if the setting is enabled and no speaker is set
+        if self.game_settings['random_speaker'] and not self.speaker_id:
+            self.assign_random_speaker()
+        elif not self.speaker_id:
+            # Fallback to host if no speaker is assigned
+            self.speaker_id = self.host_id
         
         # Determine role distribution based on player count
         if player_count <= 7:
@@ -125,6 +228,7 @@ class Game:
         self.eliminated_player = None
         self.saved_player = None
         self.investigation_result = None
+        self.add_system_message("🌙 Night phase has begun. Special roles, perform your actions!")
     
     def add_night_action(self, player_id: str, action: str, target_id: str):
         self.night_actions[player_id] = {
@@ -169,6 +273,7 @@ class Game:
     def start_day_phase(self):
         self.phase = GamePhase.DAY
         self.day_votes = {}
+        self.add_system_message("☀️ Day phase has begun. Discuss and find the killers!")
     
     def start_voting_phase(self):
         self.phase = GamePhase.VOTING
@@ -176,6 +281,7 @@ class Game:
         # Reset vote counts
         for player in self.players.values():
             player.votes = 0
+        self.add_system_message("🗳️ Voting phase has begun. Choose who to eliminate!")
     
     def add_vote(self, voter_id: str, target_id: str):
         # Remove previous vote if exists
@@ -228,8 +334,17 @@ class Game:
         return False
     
     def get_game_state(self, player_id: Optional[str] = None):
-        alive_players = [p.to_dict() for p in self.players.values() if p.is_alive]
-        dead_players = [p.to_dict(include_role=True) for p in self.players.values() if not p.is_alive]
+        current_player = self.players.get(player_id) if player_id else None
+        
+        # Create player lists with appropriate role visibility
+        alive_players = []
+        dead_players = []
+        
+        for p in self.players.values():
+            if p.is_alive:
+                alive_players.append(p.to_dict(show_role_to_player=current_player))
+            else:
+                dead_players.append(p.to_dict(include_role=True))  # Dead players' roles are always visible
         
         state = {
             'room_code': self.room_code,
@@ -239,7 +354,10 @@ class Game:
             'player_count': len(self.players),
             'alive_count': len(alive_players),
             'speaker_id': self.speaker_id,
-            'winner': self.winner
+            'host_id': self.host_id,
+            'winner': self.winner,
+            'chat_messages': self.get_chat_messages(),
+            'game_settings': self.game_settings
         }
         
         # Add player-specific information
@@ -248,10 +366,12 @@ class Game:
             state['your_role'] = player.role.value if player.role else None
             state['your_id'] = player.id
             state['you_are_alive'] = player.is_alive
+            state['you_are_host'] = player.id == self.host_id
+            state['you_are_speaker'] = player.id == self.speaker_id
             
             # Add role-specific information
             if player.role == Role.KILLER and player.is_alive:
-                state['fellow_killers'] = [p.to_dict() for p in self.get_killers() if p.id != player.id]
+                state['fellow_killers'] = [p.to_dict(include_role=True) for p in self.get_killers() if p.id != player.id]
             elif player.role == Role.DETECTIVE and hasattr(self, 'investigation_result') and self.investigation_result is not None:
                 state['investigation_result'] = self.investigation_result
         
