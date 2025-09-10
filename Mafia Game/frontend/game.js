@@ -740,22 +740,51 @@ function goToWelcome() {
 
 function showScreen(screenId) {
     const screens = document.querySelectorAll('.game-screen');
-    screens.forEach(screen => screen.classList.remove('active'));
-    
     const welcomeScreen = document.getElementById('welcome-screen');
     const mainContainer = document.getElementById('main-container');
+    const originalHeader = document.getElementById('original-header');
+    
+    // Remove active class from all screens
+    screens.forEach(screen => {
+        screen.classList.remove('active');
+        if (screen.id !== screenId) {
+            setTimeout(() => {
+                screen.style.display = 'none';
+            }, 200);
+        }
+    });
     
     if (screenId === 'welcome-screen') {
         // Show welcome screen and hide main container
-        welcomeScreen.style.display = 'flex';
-        welcomeScreen.classList.add('active');
         mainContainer.style.display = 'none';
-    } else {
-        // Hide welcome screen and show main container with the selected screen
+        welcomeScreen.style.display = 'flex';
+        setTimeout(() => {
+            welcomeScreen.classList.add('active');
+        }, 50);
+    } else if (screenId === 'create-game-screen' || screenId === 'join-game-screen') {
+        // Show dedicated page layout (hide original header)
         welcomeScreen.style.display = 'none';
         welcomeScreen.classList.remove('active');
         mainContainer.style.display = 'block';
-        document.getElementById(screenId).classList.add('active');
+        if (originalHeader) originalHeader.style.display = 'none';
+        
+        const targetScreen = document.getElementById(screenId);
+        targetScreen.style.display = 'block';
+        setTimeout(() => {
+            targetScreen.classList.add('active');
+        }, 50);
+    } else {
+        // Show main container with original header for game screens
+        welcomeScreen.style.display = 'none';
+        welcomeScreen.classList.remove('active');
+        mainContainer.style.display = 'block';
+        if (originalHeader) originalHeader.style.display = 'block';
+        
+        const targetScreen = document.getElementById(screenId);
+        targetScreen.style.display = 'block';
+        setTimeout(() => {
+            targetScreen.classList.add('active');
+        }, 50);
     }
 }
 

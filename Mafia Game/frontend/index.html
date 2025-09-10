@@ -42,37 +42,58 @@
     </div>
 
     <div class="container" id="main-container" style="display: none;">
-        <div class="header">
+        <!-- Create Game Page -->
+        <div id="create-game-screen" class="game-screen">
+            <div class="page-header">
+                <button class="btn-back" onclick="goToWelcome()">
+                    <span class="back-arrow">←</span>
+                    <span>Back</span>
+                </button>
+                <h1>🎲 Create New Game</h1>
+                <p>Start a new Mafia game and invite friends</p>
+            </div>
+            
+            <div class="page-content">
+                <div class="form-group">
+                    <label for="create-player-name">Your Name:</label>
+                    <input type="text" id="create-player-name" placeholder="Enter your name" maxlength="20">
+                </div>
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="createGame()">🚀 Create Game Room</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Join Game Page -->
+        <div id="join-game-screen" class="game-screen">
+            <div class="page-header">
+                <button class="btn-back" onclick="goToWelcome()">
+                    <span class="back-arrow">←</span>
+                    <span>Back</span>
+                </button>
+                <h1>🚪 Join Game</h1>
+                <p>Enter the room code to join an existing game</p>
+            </div>
+            
+            <div class="page-content">
+                <div class="form-group">
+                    <label for="join-player-name">Your Name:</label>
+                    <input type="text" id="join-player-name" placeholder="Enter your name" maxlength="20">
+                </div>
+                <div class="form-group">
+                    <label for="room-code">Room Code:</label>
+                    <input type="text" id="room-code" placeholder="Enter 6-character room code" maxlength="6" style="text-transform: uppercase;">
+                </div>
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="joinGame()">🎯 Join Game Room</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Original Game Content Screens -->
+        <div class="header" id="original-header">
             <h1>Mafia Game</h1>
             <p>A thrilling game of deception and strategy</p>
-        </div>
-
-        <!-- Create Game Screen -->
-        <div id="create-game-screen" class="game-screen">
-            <div class="form-group">
-                <label for="create-player-name">Your Name:</label>
-                <input type="text" id="create-player-name" placeholder="Enter your name" maxlength="20">
-            </div>
-            <div class="action-buttons">
-                <button class="btn" onclick="createGame()">Create New Game</button>
-                <button class="btn btn-secondary" onclick="goToWelcome()">⬅️ Back</button>
-            </div>
-        </div>
-
-        <!-- Join Game Screen -->
-        <div id="join-game-screen" class="game-screen">
-            <div class="form-group">
-                <label for="join-player-name">Your Name:</label>
-                <input type="text" id="join-player-name" placeholder="Enter your name" maxlength="20">
-            </div>
-            <div class="form-group">
-                <label for="room-code">Room Code:</label>
-                <input type="text" id="room-code" placeholder="Enter 6-character room code" maxlength="6" style="text-transform: uppercase;">
-            </div>
-            <div class="action-buttons">
-                <button class="btn btn-secondary" onclick="joinGame()">Join Game</button>
-                <button class="btn btn-secondary" onclick="goToWelcome()">⬅️ Back</button>
-            </div>
         </div>
 
         <!-- Lobby Screen -->
