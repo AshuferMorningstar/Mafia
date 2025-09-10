@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎲 Mafia Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #ffffff;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 90%;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1);
+            background-size: 200% 200%;
+            animation: gradient 3s ease infinite;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .game-screen {
+            display: none;
+        }
+
+        .game-screen.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #e0e0e0;
+        }
+
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus, input[type="password"]:focus {
+            outline: none;
+            border-color: #4ecdc4;
+            box-shadow: 0 0 10px rgba(78, 205, 196, 0.3);
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            border: none;
+            color: white;
+            padding: 0.75rem 2rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            margin: 0.5rem;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(45deg, #45b7d1, #96ceb4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+        }
+
+        .players-list {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+
+        .player-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem;
+            margin: 0.25rem 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+        }
+
+        .player-item.dead {
+            opacity: 0.5;
+            text-decoration: line-through;
+        }
+
+        .player-item.you {
+            border: 2px solid #4ecdc4;
+        }
+
+        .role-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .role-civilian { background: #45b7d1; }
+        .role-killer { background: #ff6b6b; }
+        .role-doctor { background: #96ceb4; }
+        .role-detective { background: #feca57; color: #333; }
+
+        .game-info {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 1rem;
+            margin: 1rem 0;
+            text-align: center;
+        }
+
+        .phase-indicator {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .phase-night {
+            color: #3c6382;
+            background: linear-gradient(45deg, #0c2461, #1e3799);
+        }
+
+        .phase-day {
+            color: #f39c12;
+            background: linear-gradient(45deg, #f39c12, #e67e22);
+        }
+
+        .phase-voting {
+            color: #e74c3c;
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+        }
+
+        .messages {
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+
+        .message {
+            margin-bottom: 0.5rem;
+            padding: 0.5rem;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .error {
+            background: rgba(231, 76, 60, 0.3);
+            border-left: 4px solid #e74c3c;
+        }
+
+        .success {
+            background: rgba(46, 204, 113, 0.3);
+            border-left: 4px solid #2ecc71;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin: 1rem 0;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+                margin: 1rem;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .btn {
+                width: 100%;
+                margin: 0.25rem 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎲 Mafia Game</h1>
+            <p>A thrilling game of deception and strategy</p>
+        </div>
+
+        <!-- Welcome Screen -->
+        <div id="welcome-screen" class="game-screen active">
+            <div class="form-group">
+                <label for="player-name">Your Name:</label>
+                <input type="text" id="player-name" placeholder="Enter your name" maxlength="20">
+            </div>
+            
+            <div class="action-buttons">
+                <button class="btn" onclick="createGame()">🎲 Create New Game</button>
+                <button class="btn btn-secondary" onclick="showJoinGame()">🚪 Join Game</button>
+            </div>
+
+            <div id="join-game-form" class="hidden">
+                <div class="form-group">
+                    <label for="room-code">Room Code:</label>
+                    <input type="text" id="room-code" placeholder="Enter 6-character room code" maxlength="6" style="text-transform: uppercase;">
+                </div>
+                <button class="btn btn-secondary" onclick="joinGame()">Join Game</button>
+            </div>
+        </div>
+
+        <!-- Lobby Screen -->
+        <div id="lobby-screen" class="game-screen">
+            <div class="game-info">
+                <h2>🏠 Game Lobby</h2>
+                <p><strong>Room Code:</strong> <span id="lobby-room-code"></span></p>
+                <p>Share this code with other players to join!</p>
+            </div>
+
+            <div class="players-list">
+                <h3>👥 Players (<span id="player-count">0</span>)</h3>
+                <div id="players-container"></div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn" id="start-game-btn" onclick="startGame()" disabled>🎮 Start Game</button>
+                <button class="btn btn-danger" onclick="leaveGame()">🚪 Leave Game</button>
+            </div>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="game-screen">
+            <div class="game-info">
+                <div class="phase-indicator" id="phase-indicator">
+                    🌙 Night Phase
+                </div>
+                <p><strong>Your Role:</strong> <span id="your-role" class="role-badge">Unknown</span></p>
+                <div id="role-description"></div>
+            </div>
+
+            <div class="grid">
+                <div class="players-list">
+                    <h3>👥 Alive Players (<span id="alive-count">0</span>)</h3>
+                    <div id="alive-players-container"></div>
+                </div>
+
+                <div class="players-list">
+                    <h3>💀 Eliminated Players</h3>
+                    <div id="dead-players-container"></div>
+                </div>
+            </div>
+
+            <div id="night-actions" class="hidden">
+                <h3>🌙 Night Actions</h3>
+                <div id="night-targets"></div>
+            </div>
+
+            <div id="day-voting" class="hidden">
+                <h3>🗳️ Day Voting</h3>
+                <p>Choose who to eliminate:</p>
+                <div id="voting-targets"></div>
+            </div>
+
+            <div id="speaker-controls" class="hidden">
+                <h3>🎙️ Speaker Controls</h3>
+                <div class="action-buttons">
+                    <button class="btn" id="process-night-btn" onclick="processNight()" disabled>Process Night</button>
+                    <button class="btn" id="start-voting-btn" onclick="startVoting()" disabled>Start Voting</button>
+                    <button class="btn" id="process-votes-btn" onclick="processVotes()" disabled>Process Votes</button>
+                </div>
+            </div>
+
+            <div class="messages" id="game-messages"></div>
+
+            <div class="action-buttons">
+                <button class="btn btn-danger" onclick="leaveGame()">🚪 Leave Game</button>
+            </div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="game-over-screen" class="game-screen">
+            <div class="game-info">
+                <h2 id="game-over-title">🎉 Game Over!</h2>
+                <p id="game-over-message"></p>
+            </div>
+
+            <div class="players-list">
+                <h3>👥 Final Players</h3>
+                <div id="final-players-container"></div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn" onclick="goToWelcome()">🏠 Back to Menu</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
