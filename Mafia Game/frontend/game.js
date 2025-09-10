@@ -1,3 +1,4 @@
+// END OF FILE FIX: Add missing closing brace if needed
 // Game state
 let socket = null;
 let gameState = null;
@@ -250,35 +251,43 @@ function handleGameStarted(data) {
     addMessage(data.message, 'success');
 }
 
-function updateGameScreen() {
-    if (!gameState) return;
-    
-    // Update phase indicator
-    const phaseIndicator = document.getElementById('phase-indicator');
-    let phaseText = '';
-    let phaseClass = '';
-    
-    switch (gameState.phase) {
-        case 'night':
-            phaseText = '🌙 Night Phase';
-            phaseClass = 'phase-night';
-            break;
-        case 'day':
-            phaseText = '☀️ Day Phase';
-            phaseClass = 'phase-day';
-            break;
-        case 'voting':
-            phaseText = '🗳️ Voting Phase';
-            phaseClass = 'phase-voting';
-            break;
-        default:
-            phaseText = '⏳ Waiting...';
+function createGame() {
+    const name = document.getElementById('create-player-name').value.trim();
+    console.log('[DEBUG] createGame called. Name:', name);
+    if (!name) {
+        addMessage('Please enter your name', 'error');
+        return;
     }
-    
-    phaseIndicator.textContent = phaseText;
-    phaseIndicator.className = `phase-indicator ${phaseClass}`;
-    
-    // Update role information
+    playerName = name;
+    console.log('[DEBUG] Sending POST to /api/create-game');
+    fetch('http://localhost:5001/api/create-game', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        console.log('[DEBUG] Got response from /api/create-game', response);
+        return response.json();
+    })
+    .then(data => {
+        console.log('[DEBUG] Response JSON:', data);
+        if (data.success) {
+            roomCode = data.room_code;
+            console.log('[DEBUG] Room created. Code:', roomCode);
+            joinGameWithCode(roomCode);
+        } else {
+            addMessage(data.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('[DEBUG] Error creating game:', error);
+        addMessage('Failed to create game', 'error');
+    });
+}
+
+function updateGameScreen() {
+    // Update role and description
     const roleSpan = document.getElementById('your-role');
     const roleDesc = document.getElementById('role-description');
     
@@ -818,21 +827,34 @@ function formatRole(role) {
 }
 
 // Handle room code input formatting
-document.getElementById('room-code').addEventListener('input', function(e) {
-    e.target.value = e.target.value.toUpperCase();
-});
+// (guarded version below)
+const roomCodeInput = document.getElementById('room-code');
+if (roomCodeInput) {
+    roomCodeInput.addEventListener('input', function(e) {
+        e.target.value = e.target.value.toUpperCase();
+    });
+    roomCodeInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            joinGame();
+        }
+    });
+}
 
 // Handle enter key on forms
-document.getElementById('player-name').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        const joinForm = document.getElementById('join-game-form');
-        if (!joinForm.classList.contains('hidden')) {
-            joinGame();
-        } else {
-            createGame();
+// (guarded version below)
+const playerNameInput = document.getElementById('player-name');
+if (playerNameInput) {
+    playerNameInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            const joinForm = document.getElementById('join-game-form');
+            if (joinForm && !joinForm.classList.contains('hidden')) {
+                joinGame();
+            } else {
+                createGame();
+            }
         }
-    }
-});
+    });
+}
 
 document.getElementById('room-code').addEventListener('keypress', function(e) {
     if (e.key === 'Enter') {
