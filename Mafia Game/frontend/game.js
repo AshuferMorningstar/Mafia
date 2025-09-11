@@ -631,15 +631,25 @@ function addChatMessage(message) {
 function updateChatMessages() {
     if (!gameState || !gameState.chat_messages) return;
     
-    const currentScreen = document.querySelector('.game-screen.active').id;
+    const lobbyScreen = document.getElementById('lobby-screen');
+    const gameScreen = document.getElementById('game-screen');
     let containerId = '';
-    
-    if (currentScreen === 'lobby-screen') {
+
+    if (lobbyScreen && lobbyScreen.classList.contains('active')) {
         containerId = 'lobby-chat-messages';
-    } else if (currentScreen === 'game-screen') {
+    } else if (gameScreen && gameScreen.classList.contains('active')) {
         containerId = 'chat-messages';
+    } else {
+        // If no screen is active yet, try to infer from game state
+        if (gameState.phase === 'lobby') {
+            containerId = 'lobby-chat-messages';
+        } else if (gameState.phase) {
+            containerId = 'chat-messages';
+        }
     }
     
+    if (!containerId) return; // No active screen found
+
     const container = document.getElementById(containerId);
     if (!container) return;
     
