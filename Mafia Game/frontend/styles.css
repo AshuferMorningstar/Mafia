@@ -1183,99 +1183,52 @@ input[type="text"]:focus, input[type="password"]:focus {
     text-align: center;
 }
 
-.room-code {
-    font-size: 2rem;
-    font-weight: 700;
-    letter-spacing: 0.2em;
-    color: #4ecdc4;
-    text-shadow: 0 0 10px rgba(78, 205, 196, 0.3);
-    margin: 0.5rem 0;
-}
-
-.host-badge {
-    background: linear-gradient(45deg, #f39c12, #e67e22);
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    margin-left: 0.5rem;
-}
-
-.speaker-badge {
-    background: linear-gradient(45deg, #8e44ad, #9b59b6);
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    margin-left: 0.5rem;
-}
-
-/* Role Summary Styles */
-.role-summary {
-    background: rgba(255, 255, 255, 0.08);
+.room-info {
+    text-align: center;
+    background: rgba(255, 255, 255, 0.1);
     border-radius: 15px;
     padding: 1.5rem;
-    margin: 1rem 0;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 1.5rem;
 }
 
-.role-summary h3 {
-    text-align: center;
-    margin-bottom: 1rem;
+.room-code-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.room-code-display {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: 3px;
     color: #4ecdc4;
 }
 
-.role-info-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-}
-
-.role-info-item {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 10px;
-    padding: 1rem;
-    text-align: center;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: all 0.3s ease;
-}
-
-.role-info-item:hover {
-    background: rgba(255, 255, 255, 0.1);
-    transform: translateY(-2px);
-}
-
-.role-info-item p {
-    margin: 0.5rem 0 0 0;
-    font-size: 0.9rem;
-    opacity: 0.8;
-    line-height: 1.4;
-}
-
-.role-summary-header {
+.btn-icon {
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    color: white;
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
     cursor: pointer;
-    user-select: none;
     transition: all 0.3s ease;
 }
 
-.role-summary-header:hover {
-    color: #4ecdc4;
+.btn-icon:hover {
+    background: rgba(78, 205, 196, 0.3);
+    transform: scale(1.1);
 }
 
-.toggle-icon {
-    font-size: 1.2rem;
-    transition: transform 0.3s ease;
-}
-
-.toggle-icon.collapsed {
-    transform: rotate(-90deg);
-}
-
-.role-info-grid.collapsed {
-    display: none;
+.btn-icon svg {
+    width: 24px;
+    height: 24px;
+    fill: #ffffff;
 }
 
 /* Speaker Settings Styles */

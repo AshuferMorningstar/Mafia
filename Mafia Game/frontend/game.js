@@ -889,12 +889,12 @@ function showScreen(screenId) {
         const topLogoSection = document.getElementById('top-logo-section');
         
         if (sidePanel) sidePanel.style.display = 'none';
-        if (topDashboard) topDashboard.style.display = 'flex'; // Show top bar on mobile
+        if (topDashboard) topDashboard.style.display = 'none';
         if (topLogoSection) topLogoSection.style.display = 'none';
 
         // Adjust body padding
         document.body.style.paddingLeft = '0';
-        document.body.style.paddingTop = window.innerWidth <= 768 ? '60px' : '0';
+        document.body.style.paddingTop = '0';
 
         const targetScreen = document.getElementById(screenId);
         targetScreen.style.display = 'block';
@@ -1213,46 +1213,52 @@ document.addEventListener('click', function(event) {
     }
 });
 
-// Handle window resize to close mobile menu if switching to desktop
-window.addEventListener('resize', function() {
-    if (window.innerWidth > 768 && mobileMenuOpen) {
-        closeMobileMenu();
-    }
-    
-    // Update side panel and top dashboard visibility based on screen size
-    const sidePanel = document.getElementById('side-panel');
-    const topDashboard = document.getElementById('top-dashboard');
-    
-    if (sidePanel && topDashboard) {
-        if (window.innerWidth > 768) {
-            // Desktop: show side panel, hide top dashboard
-            sidePanel.style.display = 'flex';
-            topDashboard.style.display = 'none';
-        } else {
-            // Mobile: hide side panel, show top dashboard
-            sidePanel.style.display = 'none';
-            topDashboard.style.display = 'flex';
-        }
-    }
-});
+// Handle room code copy and share
+// (guarded version below)
+const copyButton = document.getElementById('copy-room-code');
+const shareButton = document.getElementById('share-room');
 
-// Legacy function names for compatibility
-function toggleMobileInfo() {
-    toggleMobileMenu();
+if (copyButton) {
+    copyButton.addEventListener('click', function() {
+        copyRoomCode();
+    });
 }
 
-function closeMobileInfo() {
-    closeMobileMenu();
+if (shareButton) {
+    shareButton.addEventListener('click', function() {
+        shareRoom();
+    });
 }
 
-// Animation helper for smooth transitions
-function animatePanel(panelElement, isOpening) {
-    if (isOpening) {
-        panelElement.style.transform = 'translateX(100%)';
-        setTimeout(() => {
-            panelElement.style.transform = 'translateX(0)';
-        }, 10);
+// Share and Copy Functions
+function copyRoomCode() {
+    if (roomCode) {
+        navigator.clipboard.writeText(roomCode).then(() => {
+            addMessage('Room code copied to clipboard!', 'success');
+        }, (err) => {
+            addMessage('Failed to copy room code.', 'error');
+            console.error('Could not copy text: ', err);
+        });
+    }
+}
+
+function shareRoom() {
+    if (navigator.share && roomCode) {
+        navigator.share({
+            title: 'Join my Mafia Game!',
+            text: `Join my Mafia game with this code: ${roomCode}`,
+            url: window.location.href
+        }).then(() => {
+            addMessage('Room shared successfully!', 'success');
+        }).catch((error) => {
+            // Avoid showing an error if the user cancels the share dialog
+            if (error.name !== 'AbortError') {
+                addMessage('Error sharing room.', 'error');
+                console.error('Error sharing:', error);
+            }
+        });
     } else {
-        panelElement.style.transform = 'translateX(100%)';
+        copyRoomCode();
+        addMessage('Share not supported, room code copied instead.', 'info');
     }
 }
