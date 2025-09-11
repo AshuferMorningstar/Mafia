@@ -787,15 +787,42 @@ function showScreen(screenId) {
         // Show welcome screen and hide main container
         mainContainer.style.display = 'none';
         welcomeScreen.style.display = 'flex';
+        
+        // Restore navigation for welcome screen
+        const sidePanel = document.getElementById('side-panel');
+        const topDashboard = document.getElementById('top-dashboard');
+        const topLogoSection = document.getElementById('top-logo-section');
+        
+        if (sidePanel) sidePanel.style.display = 'flex';
+        if (topDashboard) topDashboard.style.display = 'flex';
+        if (topLogoSection) topLogoSection.style.display = 'block';
+        
+        // Restore body padding
+        document.body.style.paddingLeft = '';
+        document.body.style.paddingTop = '';
+        
         setTimeout(() => {
             welcomeScreen.classList.add('active');
         }, 50);
     } else if (screenId === 'create-game-screen' || screenId === 'join-game-screen') {
-        // Show dedicated page layout (hide original header)
+        // Show dedicated page layout (hide original header and navigation)
         welcomeScreen.style.display = 'none';
         welcomeScreen.classList.remove('active');
         mainContainer.style.display = 'block';
         if (originalHeader) originalHeader.style.display = 'none';
+        
+        // Hide side panel and top dashboard for full-page experience
+        const sidePanel = document.getElementById('side-panel');
+        const topDashboard = document.getElementById('top-dashboard');
+        const topLogoSection = document.getElementById('top-logo-section');
+        
+        if (sidePanel) sidePanel.style.display = 'none';
+        if (topDashboard) topDashboard.style.display = 'none';
+        if (topLogoSection) topLogoSection.style.display = 'none';
+        
+        // Remove body padding for full-width display
+        document.body.style.paddingLeft = '0';
+        document.body.style.paddingTop = '0';
         
         const targetScreen = document.getElementById(screenId);
         targetScreen.style.display = 'block';
@@ -808,6 +835,19 @@ function showScreen(screenId) {
         welcomeScreen.classList.remove('active');
         mainContainer.style.display = 'block';
         if (originalHeader) originalHeader.style.display = 'block';
+        
+        // Restore navigation for other game screens
+        const sidePanel = document.getElementById('side-panel');
+        const topDashboard = document.getElementById('top-dashboard');
+        const topLogoSection = document.getElementById('top-logo-section');
+        
+        if (sidePanel) sidePanel.style.display = 'flex';
+        if (topDashboard) topDashboard.style.display = 'flex';
+        if (topLogoSection) topLogoSection.style.display = 'block';
+        
+        // Restore body padding
+        document.body.style.paddingLeft = '';
+        document.body.style.paddingTop = '';
         
         const targetScreen = document.getElementById(screenId);
         targetScreen.style.display = 'block';
