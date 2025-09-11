@@ -90,6 +90,8 @@
     height: 100%;
     padding: 0 1rem;
     justify-content: space-between;
+    width: 100%;
+    max-width: 100vw;
 }
 .top-dashboard-logo {
     width: 40px;
@@ -319,6 +321,21 @@
     }
     body {
         padding-top: 60px;
+        padding-left: 0 !important; /* Remove desktop left padding */
+        align-items: stretch; /* Don't center content, let it stretch full width */
+    }
+    
+    /* Fix container positioning on mobile */
+    .container {
+        width: 100%;
+        margin: 0;
+        padding: 1rem;
+    }
+    
+    .welcome-screen-container {
+        width: 100%;
+        margin: 0;
+        padding: 1rem;
     }
 }
 @media (min-width: 769px) {
