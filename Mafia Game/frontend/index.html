@@ -7,6 +7,24 @@
     <link rel="stylesheet" href="styles.css?v=2024">
 </head>
 <body>
+    <!-- Side Panel (Desktop) / Top Dashboard (Mobile/Tablet) -->
+    <nav class="side-panel" id="side-panel">
+        <div class="side-panel-title">Mafia Game</div>
+        <ul class="side-panel-menu">
+            <li><button class="side-panel-btn" onclick="showHowToPlay()">📖 How to Play</button></li>
+            <li><button class="side-panel-btn" onclick="showRolesInfo()">🎭 Roles Info</button></li>
+            <li><button class="side-panel-btn" onclick="showTips()">💡 Game Tips</button></li>
+            <li><button class="side-panel-btn" onclick="showAbout()">ℹ️ About</button></li>
+        </ul>
+    </nav>
+    <nav class="top-dashboard" id="top-dashboard">
+        <div class="top-dashboard-content">
+            <span class="top-dashboard-title">Mafia Game</span>
+            <button class="dashboard-btn" onclick="goToWelcome()">🏠</button>
+            <button class="dashboard-btn" onclick="showCreateGame()">🎲</button>
+            <button class="dashboard-btn" onclick="showJoinGame()">🚪</button>
+        </div>
+    </nav>
     <!-- Splash Screen -->
     <div id="splash-screen" class="splash-screen active">
         <div class="splash-content">
