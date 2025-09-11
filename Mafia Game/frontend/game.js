@@ -83,7 +83,46 @@ function showJoinGame() {
 }
 
 function goToWelcome() {
+    console.log("Going to welcome screen");
     showScreen('welcome-screen');
+    
+    // Close mobile menu if it's open
+    if (mobileMenuOpen) {
+        closeMobileMenu();
+    }
+    
+    // Clear any form inputs with proper IDs
+    const createPlayerNameInput = document.getElementById('create-player-name');
+    const joinPlayerNameInput = document.getElementById('join-player-name');
+    const roomCodeInput = document.getElementById('room-code');
+    
+    if (createPlayerNameInput) createPlayerNameInput.value = '';
+    if (joinPlayerNameInput) joinPlayerNameInput.value = '';
+    if (roomCodeInput) roomCodeInput.value = '';
+    
+    // Hide join game form if it was shown
+    const joinGameForm = document.getElementById('join-game-form');
+    if (joinGameForm) {
+        joinGameForm.style.display = 'none';
+        joinGameForm.classList.add('hidden');
+    }
+    
+    // Reset game state
+    gameState = null;
+    playerId = null;
+    roomCode = null;
+    playerName = null;
+    
+    // Clear messages
+    const gameMessages = document.getElementById('game-messages');
+    if (gameMessages) {
+        gameMessages.innerHTML = '';
+    }
+    
+    // Reconnect to server if needed
+    if (!socket || !socket.connected) {
+        connectToServer();
+    }
 }
 
 function createGame() {
@@ -744,28 +783,6 @@ function leaveGame() {
     goToWelcome();
 }
 
-function goToWelcome() {
-    showScreen('welcome-screen');
-    
-    // Reset form
-    document.getElementById('player-name').value = '';
-    document.getElementById('room-code').value = '';
-    document.getElementById('join-game-form').classList.add('hidden');
-    
-    // Reset game state
-    gameState = null;
-    playerId = null;
-    roomCode = null;
-    playerName = null;
-    
-    // Clear messages
-    document.getElementById('game-messages').innerHTML = '';
-    
-    // Reconnect to server
-    if (!socket || !socket.connected) {
-        connectToServer();
-    }
-}
 
 function showScreen(screenId) {
     const screens = document.querySelectorAll('.game-screen');
@@ -793,8 +810,24 @@ function showScreen(screenId) {
         const topDashboard = document.getElementById('top-dashboard');
         const topLogoSection = document.getElementById('top-logo-section');
         
-        if (sidePanel) sidePanel.style.display = 'flex';
-        if (topDashboard) topDashboard.style.display = 'flex';
+        // Only show side panel on desktop (>768px), not mobile
+        if (sidePanel) {
+            if (window.innerWidth > 768) {
+                sidePanel.style.display = 'flex';
+            } else {
+                sidePanel.style.display = 'none';
+            }
+        }
+        
+        // Only show top dashboard on mobile (<=768px), not desktop
+        if (topDashboard) {
+            if (window.innerWidth <= 768) {
+                topDashboard.style.display = 'flex';
+            } else {
+                topDashboard.style.display = 'none';
+            }
+        }
+        
         if (topLogoSection) topLogoSection.style.display = 'block';
         
         // Restore body padding
@@ -841,8 +874,24 @@ function showScreen(screenId) {
         const topDashboard = document.getElementById('top-dashboard');
         const topLogoSection = document.getElementById('top-logo-section');
         
-        if (sidePanel) sidePanel.style.display = 'flex';
-        if (topDashboard) topDashboard.style.display = 'flex';
+        // Only show side panel on desktop (>768px), not mobile
+        if (sidePanel) {
+            if (window.innerWidth > 768) {
+                sidePanel.style.display = 'flex';
+            } else {
+                sidePanel.style.display = 'none';
+            }
+        }
+        
+        // Only show top dashboard on mobile (<=768px), not desktop
+        if (topDashboard) {
+            if (window.innerWidth <= 768) {
+                topDashboard.style.display = 'flex';
+            } else {
+                topDashboard.style.display = 'none';
+            }
+        }
+        
         if (topLogoSection) topLogoSection.style.display = 'block';
         
         // Restore body padding
@@ -902,25 +951,27 @@ if (roomCodeInput) {
 
 // Handle enter key on forms
 // (guarded version below)
-const playerNameInput = document.getElementById('player-name');
-if (playerNameInput) {
-    playerNameInput.addEventListener('keypress', function(e) {
+const createPlayerNameInput = document.getElementById('create-player-name');
+const joinPlayerNameInput = document.getElementById('join-player-name');
+
+if (createPlayerNameInput) {
+    createPlayerNameInput.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
-            const joinForm = document.getElementById('join-game-form');
-            if (joinForm && !joinForm.classList.contains('hidden')) {
-                joinGame();
-            } else {
-                createGame();
-            }
+            createGame();
         }
     });
 }
 
-document.getElementById('room-code').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-        joinGame();
-    }
-});
+if (joinPlayerNameInput) {
+    joinPlayerNameInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            const roomCodeInputElement = document.getElementById('room-code');
+            if (roomCodeInputElement && roomCodeInputElement.value.trim()) {
+                joinGame();
+            }
+        }
+    });
+}
 
 // Handle enter key for chat inputs
 document.addEventListener('keypress', function(e) {
@@ -1123,6 +1174,22 @@ document.addEventListener('click', function(event) {
 window.addEventListener('resize', function() {
     if (window.innerWidth > 768 && mobileMenuOpen) {
         closeMobileMenu();
+    }
+    
+    // Update side panel and top dashboard visibility based on screen size
+    const sidePanel = document.getElementById('side-panel');
+    const topDashboard = document.getElementById('top-dashboard');
+    
+    if (sidePanel && topDashboard) {
+        if (window.innerWidth > 768) {
+            // Desktop: show side panel, hide top dashboard
+            sidePanel.style.display = 'flex';
+            topDashboard.style.display = 'none';
+        } else {
+            // Mobile: hide side panel, show top dashboard
+            sidePanel.style.display = 'none';
+            topDashboard.style.display = 'flex';
+        }
     }
 });
 
