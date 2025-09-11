@@ -862,11 +862,44 @@ function showScreen(screenId) {
         setTimeout(() => {
             targetScreen.classList.add('active');
         }, 50);
+    } else if (screenId === 'lobby-screen') {
+        // Show main container without card styles for lobby
+        welcomeScreen.style.display = 'none';
+        welcomeScreen.classList.remove('active');
+        mainContainer.style.display = 'block';
+        mainContainer.style.background = 'transparent';
+        mainContainer.style.boxShadow = 'none';
+        mainContainer.style.backdropFilter = 'none';
+        mainContainer.style.padding = '1rem';
+        if (originalHeader) originalHeader.style.display = 'none';
+
+        // Hide navigation for lobby screen
+        const sidePanel = document.getElementById('side-panel');
+        const topDashboard = document.getElementById('top-dashboard');
+        const topLogoSection = document.getElementById('top-logo-section');
+        
+        if (sidePanel) sidePanel.style.display = 'none';
+        if (topDashboard) topDashboard.style.display = 'flex'; // Show top bar on mobile
+        if (topLogoSection) topLogoSection.style.display = 'none';
+
+        // Adjust body padding
+        document.body.style.paddingLeft = '0';
+        document.body.style.paddingTop = window.innerWidth <= 768 ? '60px' : '0';
+
+        const targetScreen = document.getElementById(screenId);
+        targetScreen.style.display = 'block';
+        setTimeout(() => {
+            targetScreen.classList.add('active');
+        }, 50);
     } else {
         // Show main container with original header for game screens
         welcomeScreen.style.display = 'none';
         welcomeScreen.classList.remove('active');
         mainContainer.style.display = 'block';
+        mainContainer.style.background = ''; // Reset background
+        mainContainer.style.boxShadow = ''; // Reset box-shadow
+        mainContainer.style.backdropFilter = ''; // Reset backdrop-filter
+        mainContainer.style.padding = ''; // Reset padding
         if (originalHeader) originalHeader.style.display = 'block';
         
         // Restore navigation for other game screens
