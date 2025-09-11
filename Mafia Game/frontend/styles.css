@@ -89,6 +89,8 @@
     align-items: center;
     height: 100%;
     padding: 0 1rem;
+    justify-content: flex-start;
+    gap: 1rem;
 }
 .top-dashboard-logo {
     width: 40px;
@@ -101,7 +103,7 @@
     font-size: 1.3rem;
     font-weight: 700;
     flex: 1;
-    text-align: center;
+    text-align: left;
 }
 
 /* Hamburger Menu */
@@ -109,34 +111,49 @@
     background: none;
     border: none;
     cursor: pointer;
-    padding: 8px;
+    padding: 12px;
     display: flex;
     flex-direction: column;
-    justify-content: space-around;
-    width: 30px;
-    height: 30px;
+    justify-content: center;
+    align-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
     transition: all 0.3s ease;
+    position: relative;
+}
+
+.hamburger-menu:hover {
+    background: rgba(78, 205, 196, 0.1);
 }
 
 .hamburger-line {
-    width: 24px;
-    height: 3px;
+    width: 22px;
+    height: 2px;
     background: #4ecdc4;
     border-radius: 2px;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     transform-origin: center;
+    margin: 2px 0;
+}
+
+.hamburger-menu.active {
+    background: rgba(78, 205, 196, 0.15);
 }
 
 .hamburger-menu.active .hamburger-line:nth-child(1) {
-    transform: rotate(45deg) translate(6px, 6px);
+    transform: rotate(45deg) translate(5px, 5px);
+    background: #ff6b6b;
 }
 
 .hamburger-menu.active .hamburger-line:nth-child(2) {
     opacity: 0;
+    transform: scaleX(0);
 }
 
 .hamburger-menu.active .hamburger-line:nth-child(3) {
-    transform: rotate(-45deg) translate(6px, -6px);
+    transform: rotate(-45deg) translate(7px, -6px);
+    background: #ff6b6b;
 }
 
 .hamburger-menu:hover .hamburger-line {
@@ -1832,17 +1849,25 @@ input[type="text"]:focus, input[type="password"]:focus {
     
     .hamburger-menu {
         padding: 10px;
+        width: 40px;
+        height: 40px;
+    }
+    
+    .hamburger-line {
+        width: 20px;
+        height: 2px;
+        margin: 1.5px 0;
     }
     
     .top-dashboard-content {
-        padding: 0 1rem;
+        padding: 0 0.75rem;
         justify-content: flex-start;
-        gap: 1rem;
+        gap: 0.75rem;
     }
     
     .top-dashboard-title {
         font-size: 1.1rem;
-        text-align: center;
+        text-align: left;
         flex: 1;
     }
     
