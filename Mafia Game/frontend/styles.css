@@ -1663,13 +1663,13 @@ input[type="text"]:focus, input[type="password"]:focus {
 /* Panel Content */
 .info-panel-content {
     padding: 2rem;
-    background: #f8f9fa;
+    background: rgba(22, 33, 62, 0.95);
     min-height: calc(100vh - 120px);
 }
 
 /* Info Sections */
 .info-section {
-    background: white;
+    background: rgba(255, 255, 255, 0.1);
     border-radius: 12px;
     padding: 1.5rem;
     margin-bottom: 1.5rem;
@@ -1688,19 +1688,20 @@ input[type="text"]:focus, input[type="password"]:focus {
 }
 
 .info-section p {
-    color: #495057;
+    color: #ffffff;
     line-height: 1.6;
     margin: 0.5rem 0;
 }
 
 .info-section ul {
-    color: #495057;
+    color: #ffffff;
     line-height: 1.6;
     padding-left: 1.5rem;
 }
 
 .info-section li {
     margin: 0.5rem 0;
+    color: #ffffff;
 }
 
 /* Role Cards */
@@ -1780,6 +1781,33 @@ input[type="text"]:focus, input[type="password"]:focus {
 
 .tip-card li {
     margin: 0.5rem 0;
+}
+
+/* Script Box Styling */
+.script-box {
+    background: rgba(78, 205, 196, 0.1);
+    border-left: 4px solid #4ecdc4;
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+    font-family: 'Courier New', monospace;
+}
+
+.script-box p {
+    margin: 0.5rem 0;
+    line-height: 1.4;
+}
+
+.script-box em {
+    color: #4ecdc4;
+    font-style: italic;
+}
+
+.tip-card h4 {
+    color: #4ecdc4;
+    margin: 1.5rem 0 0.8rem 0;
+    font-size: 1.1rem;
+    font-weight: 600;
 }
 
 /* About Sections */
