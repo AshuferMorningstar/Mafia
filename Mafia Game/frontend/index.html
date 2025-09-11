@@ -11,19 +11,237 @@
     <nav class="side-panel" id="side-panel">
         <div class="side-panel-title">Mafia Game</div>
         <ul class="side-panel-menu">
-            <li><button class="side-panel-btn" onclick="showHowToPlay()">📖 How to Play</button></li>
-            <li><button class="side-panel-btn" onclick="showRolesInfo()">🎭 Roles Info</button></li>
-            <li><button class="side-panel-btn" onclick="showTips()">💡 Game Tips</button></li>
-            <li><button class="side-panel-btn" onclick="showAbout()">ℹ️ About</button></li>
+            <li><button class="side-panel-btn" onclick="togglePanel('how-to-play')">📖 How to Play</button></li>
+            <li><button class="side-panel-btn" onclick="togglePanel('roles-info')">🎭 Roles Info</button></li>
+            <li><button class="side-panel-btn" onclick="togglePanel('game-tips')">💡 Game Tips</button></li>
+            <li><button class="side-panel-btn" onclick="togglePanel('about')">ℹ️ About</button></li>
         </ul>
     </nav>
+
+    <!-- Information Panels -->
+    <div class="info-panel-overlay" id="info-panel-overlay" onclick="closePanel()"></div>
+    
+    <!-- How to Play Panel -->
+    <div class="info-panel" id="how-to-play-panel">
+        <div class="info-panel-header">
+            <h2>📖 How to Play</h2>
+            <button class="close-panel-btn" onclick="closePanel()">✕</button>
+        </div>
+        <div class="info-panel-content">
+            <div class="info-section">
+                <h3>🎯 Game Objective</h3>
+                <p><strong>Civilians:</strong> Find and eliminate all killers through voting</p>
+                <p><strong>Killers:</strong> Eliminate civilians without being detected</p>
+            </div>
+            
+            <div class="info-section">
+                <h3>🌙 Night Phase</h3>
+                <ul>
+                    <li><strong>Killers</strong> choose someone to eliminate</li>
+                    <li><strong>Doctor</strong> chooses someone to save</li>
+                    <li><strong>Detective</strong> investigates a player</li>
+                </ul>
+            </div>
+            
+            <div class="info-section">
+                <h3>☀️ Day Phase</h3>
+                <ul>
+                    <li>All players discuss and vote</li>
+                    <li>Player with most votes is eliminated</li>
+                    <li>Use strategy and deduction to find killers</li>
+                </ul>
+            </div>
+            
+            <div class="info-section">
+                <h3>🏆 Winning Conditions</h3>
+                <p><strong>Civilians win:</strong> All killers are eliminated</p>
+                <p><strong>Killers win:</strong> Equal or outnumber civilians</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Roles Info Panel -->
+    <div class="info-panel" id="roles-info-panel">
+        <div class="info-panel-header">
+            <h2>🎭 Roles Information</h2>
+            <button class="close-panel-btn" onclick="closePanel()">✕</button>
+        </div>
+        <div class="info-panel-content">
+            <div class="role-card">
+                <div class="role-header">
+                    <span class="role-icon">�</span>
+                    <h3>Civilian</h3>
+                </div>
+                <p><strong>Goal:</strong> Find and eliminate all killers</p>
+                <p><strong>Abilities:</strong> Vote during day phase, discuss with others</p>
+                <p><strong>Strategy:</strong> Pay attention to behavior, form alliances carefully</p>
+            </div>
+            
+            <div class="role-card">
+                <div class="role-header">
+                    <span class="role-icon">🔪</span>
+                    <h3>Killer</h3>
+                </div>
+                <p><strong>Goal:</strong> Eliminate civilians without being caught</p>
+                <p><strong>Abilities:</strong> Choose victims at night, blend in during day</p>
+                <p><strong>Strategy:</strong> Act innocent, deflect suspicion, coordinate with other killers</p>
+            </div>
+            
+            <div class="role-card">
+                <div class="role-header">
+                    <span class="role-icon">🩺</span>
+                    <h3>Doctor</h3>
+                </div>
+                <p><strong>Goal:</strong> Keep civilians alive, eliminate killers</p>
+                <p><strong>Abilities:</strong> Save one player each night (including yourself)</p>
+                <p><strong>Strategy:</strong> Protect key players, stay hidden from killers</p>
+            </div>
+            
+            <div class="role-card">
+                <div class="role-header">
+                    <span class="role-icon">🔍</span>
+                    <h3>Detective</h3>
+                </div>
+                <p><strong>Goal:</strong> Investigate and expose killers</p>
+                <p><strong>Abilities:</strong> Learn if a player is a killer each night</p>
+                <p><strong>Strategy:</strong> Gather evidence carefully, reveal information strategically</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Game Tips Panel -->
+    <div class="info-panel" id="game-tips-panel">
+        <div class="info-panel-header">
+            <h2>💡 Game Tips</h2>
+            <button class="close-panel-btn" onclick="closePanel()">✕</button>
+        </div>
+        <div class="info-panel-content">
+            <div class="tip-card">
+                <h3>🕵️ For Civilians</h3>
+                <ul>
+                    <li>Watch for inconsistencies in stories</li>
+                    <li>Notice who defends killers or pushes innocent votes</li>
+                    <li>Form trusted alliances, but be cautious</li>
+                    <li>Use the chat to gather information</li>
+                    <li>Don't reveal special roles too early</li>
+                </ul>
+            </div>
+            
+            <div class="tip-card">
+                <h3>🎭 For Killers</h3>
+                <ul>
+                    <li>Act natural and participate in discussions</li>
+                    <li>Don't defend other killers too obviously</li>
+                    <li>Create reasonable doubt about innocent players</li>
+                    <li>Coordinate kills to maximize impact</li>
+                    <li>Target special roles when identified</li>
+                </ul>
+            </div>
+            
+            <div class="tip-card">
+                <h3>🎲 General Strategy</h3>
+                <ul>
+                    <li>Pay attention to voting patterns</li>
+                    <li>Use the process of elimination</li>
+                    <li>Consider who benefits from each death</li>
+                    <li>Don't rush important decisions</li>
+                    <li>Communication is key to success</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <!-- About Panel -->
+    <div class="info-panel" id="about-panel">
+        <div class="info-panel-header">
+            <h2>ℹ️ About</h2>
+            <button class="close-panel-btn" onclick="closePanel()">✕</button>
+        </div>
+        <div class="info-panel-content">
+            <div class="about-section">
+                <h3>🎮 Mafia Game</h3>
+                <p>A digital adaptation of the classic social deduction game, also known as Werewolf. This implementation features real-time multiplayer gameplay with modern web technologies.</p>
+            </div>
+            
+            <div class="about-section">
+                <h3>✨ Features</h3>
+                <ul>
+                    <li>Real-time multiplayer gameplay</li>
+                    <li>Multiple game roles with unique abilities</li>
+                    <li>In-game chat system</li>
+                    <li>Speaker mode for game moderation</li>
+                    <li>Responsive design for all devices</li>
+                </ul>
+            </div>
+            
+            <div class="about-section">
+                <h3>🛠️ Technology</h3>
+                <p>Built with modern web technologies including:</p>
+                <ul>
+                    <li>Frontend: HTML5, CSS3, JavaScript</li>
+                    <li>Backend: Python Flask with Socket.IO</li>
+                    <li>Real-time communication via WebSockets</li>
+                </ul>
+            </div>
+            
+            <div class="about-section">
+                <h3>🎯 Perfect For</h3>
+                <ul>
+                    <li>Friends and family game nights</li>
+                    <li>Team building activities</li>
+                    <li>Online social gatherings</li>
+                    <li>Strategy and deduction practice</li>
+                </ul>
+            </div>
+        </div>
+    </div>
     <nav class="top-dashboard" id="top-dashboard">
         <div class="top-dashboard-content">
+            <button class="hamburger-menu" onclick="toggleMobileMenu()" title="Menu">
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+                <span class="hamburger-line"></span>
+            </button>
             <span class="top-dashboard-title">Mafia Game</span>
-            <button class="dashboard-btn" onclick="showHowToPlay()">📖</button>
-            <button class="dashboard-btn" onclick="showRolesInfo()">�</button>
-            <button class="dashboard-btn" onclick="showTips()">💡</button>
-            <button class="dashboard-btn" onclick="showAbout()">ℹ️</button>
+        </div>
+    </nav>
+
+    <!-- Mobile Menu Sidebar -->
+    <div class="mobile-menu-overlay" id="mobile-menu-overlay" onclick="closeMobileMenu()"></div>
+    <nav class="mobile-menu" id="mobile-menu">
+        <div class="mobile-menu-header">
+            <h3>Menu</h3>
+            <button class="close-mobile-menu" onclick="closeMobileMenu()">✕</button>
+        </div>
+        <div class="mobile-menu-content">
+            <button class="mobile-menu-item" onclick="openMobilePanel('how-to-play')">
+                <span class="mobile-menu-icon">📖</span>
+                <div class="mobile-menu-text">
+                    <strong>How to Play</strong>
+                    <small>Learn the game rules</small>
+                </div>
+            </button>
+            <button class="mobile-menu-item" onclick="openMobilePanel('roles-info')">
+                <span class="mobile-menu-icon">🎭</span>
+                <div class="mobile-menu-text">
+                    <strong>Roles Info</strong>
+                    <small>Character abilities</small>
+                </div>
+            </button>
+            <button class="mobile-menu-item" onclick="openMobilePanel('game-tips')">
+                <span class="mobile-menu-icon">💡</span>
+                <div class="mobile-menu-text">
+                    <strong>Game Tips</strong>
+                    <small>Strategy guides</small>
+                </div>
+            </button>
+            <button class="mobile-menu-item" onclick="openMobilePanel('about')">
+                <span class="mobile-menu-icon">ℹ️</span>
+                <div class="mobile-menu-text">
+                    <strong>About</strong>
+                    <small>Game information</small>
+                </div>
+            </button>
         </div>
     </nav>
     <!-- Splash Screen -->

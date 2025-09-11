@@ -930,3 +930,179 @@ function handleSpeakerSettingChanged(data) {
         addMessage('Random speaker assignment disabled', 'success');
     }
 }
+
+// === Information Panel Functions ===
+
+let currentOpenPanel = null;
+let mobileMenuOpen = false;
+
+function togglePanel(panelId) {
+    // Check if we're on mobile
+    const isMobile = window.innerWidth <= 768;
+    
+    if (isMobile) {
+        // On mobile, first check if menu is open
+        if (!mobileMenuOpen) {
+            toggleMobileMenu();
+            return;
+        }
+        // If menu is open, proceed to open panel
+        openMobilePanel(panelId);
+    } else {
+        // Desktop behavior
+        const panelElement = document.getElementById(`${panelId}-panel`);
+        const overlay = document.getElementById('info-panel-overlay');
+        
+        if (currentOpenPanel === panelId) {
+            // If clicking the same panel, close it
+            closePanel();
+        } else {
+            // Close any currently open panel
+            if (currentOpenPanel) {
+                const currentPanel = document.getElementById(`${currentOpenPanel}-panel`);
+                currentPanel.classList.remove('active');
+            }
+            
+            // Open the new panel
+            overlay.classList.add('active');
+            panelElement.classList.add('active');
+            currentOpenPanel = panelId;
+            
+            // Prevent body scroll when panel is open
+            document.body.style.overflow = 'hidden';
+            
+            // Add escape key listener
+            document.addEventListener('keydown', handleEscapeKey);
+        }
+    }
+}
+
+function toggleMobileMenu() {
+    const mobileMenu = document.getElementById('mobile-menu');
+    const overlay = document.getElementById('mobile-menu-overlay');
+    const hamburger = document.querySelector('.hamburger-menu');
+    
+    if (mobileMenuOpen) {
+        closeMobileMenu();
+    } else {
+        mobileMenu.classList.add('active');
+        overlay.classList.add('active');
+        hamburger.classList.add('active');
+        mobileMenuOpen = true;
+        document.body.style.overflow = 'hidden';
+        document.addEventListener('keydown', handleEscapeKey);
+    }
+}
+
+function closeMobileMenu() {
+    const mobileMenu = document.getElementById('mobile-menu');
+    const overlay = document.getElementById('mobile-menu-overlay');
+    const hamburger = document.querySelector('.hamburger-menu');
+    
+    mobileMenu.classList.remove('active');
+    hamburger.classList.remove('active');
+    
+    if (!currentOpenPanel) {
+        overlay.classList.remove('active');
+        document.body.style.overflow = '';
+        document.removeEventListener('keydown', handleEscapeKey);
+    }
+    mobileMenuOpen = false;
+}
+
+function openMobilePanel(panelId) {
+    // Close mobile menu first
+    closeMobileMenu();
+    
+    // Small delay to allow mobile menu to close
+    setTimeout(() => {
+        const panelElement = document.getElementById(`${panelId}-panel`);
+        const overlay = document.getElementById('info-panel-overlay');
+        
+        // Close any currently open panel
+        if (currentOpenPanel) {
+            const currentPanel = document.getElementById(`${currentOpenPanel}-panel`);
+            currentPanel.classList.remove('active');
+        }
+        
+        // Open the new panel
+        overlay.classList.add('active');
+        panelElement.classList.add('active');
+        currentOpenPanel = panelId;
+        
+        // Prevent body scroll when panel is open
+        document.body.style.overflow = 'hidden';
+        
+        // Add escape key listener
+        document.addEventListener('keydown', handleEscapeKey);
+    }, 150);
+}
+
+function closePanel() {
+    if (currentOpenPanel) {
+        const panelElement = document.getElementById(`${currentOpenPanel}-panel`);
+        const overlay = document.getElementById('info-panel-overlay');
+        
+        panelElement.classList.remove('active');
+        currentOpenPanel = null;
+        
+        // Check if mobile menu should stay open
+        if (!mobileMenuOpen) {
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+            document.removeEventListener('keydown', handleEscapeKey);
+        }
+    }
+}
+
+function handleEscapeKey(event) {
+    if (event.key === 'Escape') {
+        if (currentOpenPanel) {
+            closePanel();
+        } else if (mobileMenuOpen) {
+            closeMobileMenu();
+        }
+    }
+}
+
+// Handle overlay clicks
+document.addEventListener('click', function(event) {
+    if (event.target.id === 'info-panel-overlay') {
+        if (currentOpenPanel) {
+            closePanel();
+        }
+    }
+    if (event.target.id === 'mobile-menu-overlay') {
+        if (mobileMenuOpen) {
+            closeMobileMenu();
+        }
+    }
+});
+
+// Handle window resize to close mobile menu if switching to desktop
+window.addEventListener('resize', function() {
+    if (window.innerWidth > 768 && mobileMenuOpen) {
+        closeMobileMenu();
+    }
+});
+
+// Legacy function names for compatibility
+function toggleMobileInfo() {
+    toggleMobileMenu();
+}
+
+function closeMobileInfo() {
+    closeMobileMenu();
+}
+
+// Animation helper for smooth transitions
+function animatePanel(panelElement, isOpening) {
+    if (isOpening) {
+        panelElement.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            panelElement.style.transform = 'translateX(0)';
+        }, 10);
+    } else {
+        panelElement.style.transform = 'translateX(100%)';
+    }
+}

@@ -100,19 +100,180 @@
     color: #4ecdc4;
     font-size: 1.3rem;
     font-weight: 700;
-    margin-right: 1.5rem;
+    flex: 1;
+    text-align: center;
 }
-.dashboard-btn {
+
+/* Hamburger Menu */
+.hamburger-menu {
     background: none;
     border: none;
-    color: #fff;
-    font-size: 1.3rem;
-    margin: 0 0.5rem;
     cursor: pointer;
-    transition: color 0.2s;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    width: 30px;
+    height: 30px;
+    transition: all 0.3s ease;
 }
-.dashboard-btn:hover {
-    color: #ff6b6b;
+
+.hamburger-line {
+    width: 24px;
+    height: 3px;
+    background: #4ecdc4;
+    border-radius: 2px;
+    transition: all 0.3s ease;
+    transform-origin: center;
+}
+
+.hamburger-menu.active .hamburger-line:nth-child(1) {
+    transform: rotate(45deg) translate(6px, 6px);
+}
+
+.hamburger-menu.active .hamburger-line:nth-child(2) {
+    opacity: 0;
+}
+
+.hamburger-menu.active .hamburger-line:nth-child(3) {
+    transform: rotate(-45deg) translate(6px, -6px);
+}
+
+.hamburger-menu:hover .hamburger-line {
+    background: #ff6b6b;
+}
+
+/* Mobile Menu Overlay */
+.mobile-menu-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.mobile-menu-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Mobile Menu Sidebar */
+.mobile-menu {
+    position: fixed;
+    top: 0;
+    left: -300px;
+    width: 280px;
+    height: 100vh;
+    background: white;
+    box-shadow: 2px 0 20px rgba(0, 0, 0, 0.15);
+    z-index: 2001;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.mobile-menu.active {
+    left: 0;
+}
+
+.mobile-menu-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, #16213e, #4ecdc4);
+    color: white;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.mobile-menu-header h3 {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+}
+
+.close-mobile-menu {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.3rem;
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.close-mobile-menu:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.mobile-menu-content {
+    padding: 1rem;
+}
+
+.mobile-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+    width: 100%;
+    margin-bottom: 0.75rem;
+}
+
+.mobile-menu-item:hover {
+    background: #e9ecef;
+    transform: translateX(4px);
+}
+
+.mobile-menu-item:active {
+    transform: translateX(2px);
+}
+
+.mobile-menu-icon {
+    font-size: 1.5rem;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #4ecdc4, #ff6b6b);
+    border-radius: 12px;
+    color: white;
+    flex-shrink: 0;
+}
+
+.mobile-menu-text {
+    flex: 1;
+}
+
+.mobile-menu-text strong {
+    display: block;
+    color: #16213e;
+    font-size: 1rem;
+    margin-bottom: 0.2rem;
+    font-weight: 600;
+}
+
+.mobile-menu-text small {
+    color: #6c757d;
+    font-size: 0.85rem;
 }
 
 /* --- Responsive Layout for Panel/Dashboard --- */
@@ -1366,4 +1527,395 @@ input[type="text"]:focus, input[type="password"]:focus {
 
 .chat-send-btn:active {
     transform: scale(0.95) !important;
+}
+
+/* === Instagram-style Information Panels === */
+
+/* Panel Overlay */
+.info-panel-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.info-panel-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Panel Container */
+.info-panel-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.info-panel-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Panel Container */
+.info-panel {
+    position: fixed;
+    top: 0;
+    right: -400px;
+    width: 400px;
+    height: 100vh;
+    background: #ffffff;
+    box-shadow: -2px 0 20px rgba(0, 0, 0, 0.15);
+    z-index: 2001;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.info-panel.active {
+    right: 0;
+}
+
+/* Panel Header */
+.info-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    background: linear-gradient(135deg, #16213e, #4ecdc4);
+    color: white;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.info-panel-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+}
+
+.close-panel-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.close-panel-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.1);
+}
+
+/* Panel Content */
+.info-panel-content {
+    padding: 2rem;
+    background: #f8f9fa;
+    min-height: calc(100vh - 120px);
+}
+
+/* Info Sections */
+.info-section {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e9ecef;
+}
+
+.info-section h3 {
+    color: #16213e;
+    margin: 0 0 1rem 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.info-section p {
+    color: #495057;
+    line-height: 1.6;
+    margin: 0.5rem 0;
+}
+
+.info-section ul {
+    color: #495057;
+    line-height: 1.6;
+    padding-left: 1.5rem;
+}
+
+.info-section li {
+    margin: 0.5rem 0;
+}
+
+/* Role Cards */
+.role-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e9ecef;
+    transition: all 0.2s ease;
+}
+
+.role-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.role-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.role-icon {
+    font-size: 2rem;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #4ecdc4, #ff6b6b);
+    border-radius: 50%;
+    color: white;
+}
+
+.role-header h3 {
+    color: #16213e;
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 600;
+}
+
+.role-card p {
+    color: #495057;
+    line-height: 1.6;
+    margin: 0.5rem 0;
+}
+
+.role-card strong {
+    color: #16213e;
+}
+
+/* Tip Cards */
+.tip-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e9ecef;
+}
+
+.tip-card h3 {
+    color: #16213e;
+    margin: 0 0 1rem 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.tip-card ul {
+    color: #495057;
+    line-height: 1.6;
+    padding-left: 1.5rem;
+}
+
+.tip-card li {
+    margin: 0.5rem 0;
+}
+
+/* About Sections */
+.about-section {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e9ecef;
+}
+
+.about-section h3 {
+    color: #16213e;
+    margin: 0 0 1rem 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.about-section p {
+    color: #495057;
+    line-height: 1.6;
+    margin: 0.5rem 0;
+}
+
+.about-section ul {
+    color: #495057;
+    line-height: 1.6;
+    padding-left: 1.5rem;
+}
+
+.about-section li {
+    margin: 0.5rem 0;
+}
+
+/* Responsive Panel Design */
+@media (max-width: 768px) {
+    .info-panel {
+        width: 100vw;
+        right: -100vw;
+        border-radius: 0;
+        top: 60px;
+        height: calc(100vh - 60px);
+    }
+    
+    .info-panel.active {
+        right: 0;
+    }
+    
+    .info-panel-content {
+        padding: 1rem;
+    }
+    
+    .info-section,
+    .role-card,
+    .tip-card,
+    .about-section {
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border-radius: 8px;
+    }
+    
+    .info-panel-header {
+        padding: 1rem 1.5rem;
+    }
+    
+    .info-panel-header h2 {
+        font-size: 1.3rem;
+    }
+    
+    /* Mobile info menu adjustments */
+    .mobile-info-menu {
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
+    
+    /* Improve touch targets */
+    .mobile-menu-item {
+        min-height: 60px;
+        padding: 0.75rem;
+    }
+    
+    .hamburger-menu {
+        padding: 10px;
+    }
+    
+    .top-dashboard-content {
+        padding: 0 1rem;
+        justify-content: flex-start;
+        gap: 1rem;
+    }
+    
+    .top-dashboard-title {
+        font-size: 1.1rem;
+        text-align: center;
+        flex: 1;
+    }
+    
+    /* Mobile menu adjustments */
+    .mobile-menu {
+        width: 300px;
+    }
+    
+    .mobile-menu-icon {
+        width: 45px;
+        height: 45px;
+        font-size: 1.3rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .info-panel-content {
+        padding: 0.5rem;
+    }
+    
+    .info-section,
+    .role-card,
+    .tip-card,
+    .about-section {
+        padding: 0.75rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    .role-icon {
+        font-size: 1.5rem;
+        width: 40px;
+        height: 40px;
+    }
+    
+    .role-header h3 {
+        font-size: 1.1rem;
+    }
+}
+
+/* Dark mode support for panels */
+@media (prefers-color-scheme: dark) {
+    .info-panel {
+        background: #1a1a1a;
+    }
+    
+    .info-panel-content {
+        background: #121212;
+    }
+    
+    .info-section,
+    .role-card,
+    .tip-card,
+    .about-section {
+        background: #1e1e1e;
+        border-color: #333;
+    }
+    
+    .info-section h3,
+    .role-header h3,
+    .tip-card h3,
+    .about-section h3 {
+        color: #4ecdc4;
+    }
+    
+    .info-section p,
+    .role-card p,
+    .tip-card ul,
+    .about-section p,
+    .about-section ul {
+        color: #e0e0e0;
+    }
+    
+    .role-card strong {
+        color: #4ecdc4;
+    }
 }
