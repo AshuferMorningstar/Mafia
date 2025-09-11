@@ -483,6 +483,9 @@ body {
 
 .logo-container {
     margin-bottom: 1.5rem;
+    margin-top: 10rem;
+    display: flex;
+    justify-content: center;
 }
 
 .game-logo {
