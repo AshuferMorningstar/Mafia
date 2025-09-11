@@ -39,7 +39,7 @@ function hideSplashScreen() {
 
 function connectToServer() {
     // Connect to the backend server
-    socket = io('http://localhost:5001');
+    socket = io('http://127.0.0.1:5001');
     
     socket.on('connect', function() {
         console.log('Connected to server');
@@ -95,7 +95,7 @@ function createGame() {
     
     playerName = name;
     
-    fetch('http://localhost:5001/api/create-game', {
+    fetch('http://127.0.0.1:5001/api/create-game', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -131,10 +131,17 @@ function joinGame() {
 }
 
 function joinGameWithCode(code) {
+    console.log('[DEBUG] joinGameWithCode called. Code:', code, 'PlayerName:', playerName);
+    if (!socket || !socket.connected) {
+        addMessage('Not connected to server. Please refresh the page.', 'error');
+        console.error('[DEBUG] Socket not connected when trying to join game.');
+        return;
+    }
     socket.emit('join_game', {
         room_code: code,
         player_name: playerName
     });
+    console.log('[DEBUG] join_game event emitted.');
 }
 
 function handleJoinSuccess(data) {
@@ -252,7 +259,7 @@ function handleGameStarted(data) {
 }
 
 function createGame() {
-    const name = document.getElementById('create-player-name').value.trim();
+    const name = document.getElementById('create-player-name')?.value.trim();
     console.log('[DEBUG] createGame called. Name:', name);
     if (!name) {
         addMessage('Please enter your name', 'error');
@@ -260,7 +267,7 @@ function createGame() {
     }
     playerName = name;
     console.log('[DEBUG] Sending POST to /api/create-game');
-    fetch('http://localhost:5001/api/create-game', {
+    fetch('http://127.0.0.1:5001/api/create-game', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
@@ -268,6 +275,9 @@ function createGame() {
     })
     .then(response => {
         console.log('[DEBUG] Got response from /api/create-game', response);
+        if (!response.ok) {
+            addMessage('API error: ' + response.status + ' ' + response.statusText, 'error');
+        }
         return response.json();
     })
     .then(data => {
@@ -277,12 +287,12 @@ function createGame() {
             console.log('[DEBUG] Room created. Code:', roomCode);
             joinGameWithCode(roomCode);
         } else {
-            addMessage(data.message, 'error');
+            addMessage(data.message || 'Failed to create game', 'error');
         }
     })
     .catch(error => {
         console.error('[DEBUG] Error creating game:', error);
-        addMessage('Failed to create game', 'error');
+        addMessage('Failed to create game: ' + error, 'error');
     });
 }
 
@@ -525,6 +535,12 @@ function handleChatMessage(data) {
 }
 
 function addChatMessage(message) {
+    // Defensive: skip if message is missing required fields
+    if (!message || typeof message !== 'object') return;
+    if (message.type === undefined || message.message === undefined) return;
+    if (typeof message.timestamp !== 'number') return;
+    if (message.type !== 'system' && !message.player_name) return;
+
     const currentScreen = document.querySelector('.game-screen.active').id;
     let containerId = '';
     
@@ -592,6 +608,10 @@ function updateChatMessages() {
     container.innerHTML = '';
     
     gameState.chat_messages.forEach(message => {
+        if (!message || typeof message !== 'object') return;
+        if (message.type === undefined || message.message === undefined) return;
+        if (typeof message.timestamp !== 'number') return;
+        if (message.type !== 'system' && !message.player_name) return;
         addChatMessage(message);
     });
 }

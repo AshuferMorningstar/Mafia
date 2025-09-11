@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🎲 Mafia Game</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=2024">
 </head>
 <body>
     <!-- Splash Screen -->
@@ -136,9 +136,9 @@
                     <span id="lobby-chat-status">Online</span>
                 </div>
                 <div class="chat-messages" id="lobby-chat-messages"></div>
-                <div class="chat-input-container">
+                <div class="chat-input-container modern-chat">
                     <input type="text" id="lobby-chat-input" placeholder="Type a message..." maxlength="500">
-                    <button class="btn btn-secondary" onclick="sendChatMessage()">Send</button>
+                    <button class="btn btn-secondary chat-send-btn" onclick="sendChatMessage()">➤</button>
                 </div>
             </div>
 
@@ -231,9 +231,9 @@
                     <span id="chat-status">Online</span>
                 </div>
                 <div class="chat-messages" id="chat-messages"></div>
-                <div class="chat-input-container" id="chat-input-container">
+                <div class="chat-input-container modern-chat" id="chat-input-container">
                     <input type="text" id="chat-input" placeholder="Type a message..." maxlength="500">
-                    <button class="btn btn-secondary" onclick="sendChatMessage()">Send</button>
+                    <button class="btn btn-secondary chat-send-btn" onclick="sendChatMessage()">➤</button>
                 </div>
             </div>
 

@@ -69,9 +69,9 @@ def handle_send_chat_message(data):
         emit('error', {'message': 'Invalid message'})
         return
     
-    # Check if player can chat (alive players during day/voting, dead players if allowed)
+    # Check if player can chat
     can_chat = False
-    if player.is_alive and game.phase in [GamePhase.DAY, GamePhase.VOTING]:
+    if player.is_alive and game.phase in [GamePhase.WAITING, GamePhase.DAY, GamePhase.VOTING]:
         can_chat = True
     elif not player.is_alive and game.game_settings.get('allow_dead_chat', True):
         can_chat = True
