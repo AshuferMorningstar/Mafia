@@ -4,12 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mafia Game</title>
-    <link rel="stylesheet" href="styles.css?v=2024">
+    <!-- Font imports for stylized Mafia metallic header -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=UnifrakturMaguntia&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=20240912b">
 </head>
 <body>
     <!-- Side Panel (Desktop) / Top Dashboard (Mobile/Tablet) -->
     <nav class="side-panel" id="side-panel">
-        <div class="side-panel-title">Mafia Game</div>
+        <div class="side-panel-title main-title">Mafia Game</div>
         <ul class="side-panel-menu">
             <li><button class="side-panel-btn" onclick="togglePanel('how-to-play')">📖 How to Play</button></li>
             <li><button class="side-panel-btn" onclick="togglePanel('roles-info')">🎭 Roles Info</button></li>
@@ -349,7 +353,7 @@
     <!-- Welcome Screen (Outside Container) -->
     <div id="welcome-screen" class="game-screen active welcome-screen-container" style="display: none;">
         <div class="welcome-content">
-            <h1>Mafia Game</h1>
+            <h1 class="main-title">Mafia Game</h1>
             <p>A thrilling game of deception and strategy</p>
             <div class="welcome-buttons">
                 <button class="btn welcome-btn" onclick="showCreateGame()">🎲 Create New Game</button>
@@ -366,7 +370,7 @@
                     <span class="back-arrow">←</span>
                     <span>Back</span>
                 </button>
-                <h1>🎲 Create New Game</h1>
+                <h1 class="main-title">Create New Game</h1>
                 <p>Start a new Mafia game and invite friends</p>
             </div>
             
@@ -388,7 +392,7 @@
                     <span class="back-arrow">←</span>
                     <span>Back</span>
                 </button>
-                <h1>🚪 Join Game</h1>
+                <h1 class="main-title">Join Game</h1>
                 <p>Enter the room code to join an existing game</p>
             </div>
             
@@ -409,7 +413,7 @@
 
         <!-- Original Game Content Screens -->
         <div class="header" id="original-header">
-            <h1>Mafia Game</h1>
+            <h1 class="main-title">Mafia Game</h1>
             <p>A thrilling game of deception and strategy</p>
         </div>
 
@@ -417,7 +421,7 @@
         <div id="lobby-screen" class="game-screen">
             <div class="lobby-header">
                 <img src="mafialogo.png" alt="Mafia Logo" class="lobby-logo">
-                <h2>Game Lobby</h2>
+                <h2 class="main-title lobby-main-title">Game Lobby</h2>
                 <p class="lobby-subtitle">Share this code with your friends & family</p>
                 <div class="room-info">
                     <span>Room Code: <span class="room-code-display" id="lobby-room-code"></span></span>
