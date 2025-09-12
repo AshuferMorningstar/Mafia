@@ -1,4 +1,3 @@
-
 from enum import Enum
 from typing import Dict, List, Optional, Set
 import uuid
@@ -416,26 +415,24 @@ class GameManager:
         self.player_to_game[socket_id] = room_code
         return game, player, "Joined successfully"
     
-    def leave_game(self, socket_id: str):
-        if socket_id in self.player_to_game:
-            room_code = self.player_to_game[socket_id]
-            game = self.get_game(room_code)
-            if game:
-                # Find and remove player
-                player_to_remove = None
-                for player in game.players.values():
-                    if player.socket_id == socket_id:
-                        player_to_remove = player
-                        break
-                
-                if player_to_remove:
-                    game.remove_player(player_to_remove.id)
-                    
-                    # If game is empty, remove it
-                    if len(game.players) == 0:
-                        del self.games[room_code]
-            
+    def leave_game(self, socket_id: str) -> tuple[Optional[Game], Optional[Player]]:
+        """Handle a player leaving a game (disconnecting)"""
+        game_to_leave = self.get_game_by_socket(socket_id)
+        player_to_remove = self.get_player_by_socket(socket_id)
+        
+        if game_to_leave and player_to_remove:
+            game_to_leave.remove_player(player_to_remove.id)
             del self.player_to_game[socket_id]
+            
+            # If the game is now empty, remove it
+            if not game_to_leave.players:
+                del self.games[game_to_leave.room_code]
+                print(f"Game room {game_to_leave.room_code} is now empty and has been closed.")
+                return None, None # Game is gone
+                
+            return game_to_leave, player_to_remove
+            
+        return None, None
     
     def get_game_by_socket(self, socket_id: str) -> Optional[Game]:
         if socket_id in self.player_to_game:

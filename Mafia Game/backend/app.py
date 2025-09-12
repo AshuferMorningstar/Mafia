@@ -51,8 +51,20 @@ def handle_connect():
 
 @socketio.on('disconnect')
 def handle_disconnect():
+    """Handle player disconnecting from the server"""
     print(f'Client disconnected: {request.sid}')
-    game_manager.leave_game(request.sid)
+    game, player = game_manager.leave_game(request.sid)
+    
+    if game and player:
+        # Notify remaining players in the room
+        socketio.emit('player_left', {
+            'player_id': player.id,
+            'player_name': player.name,
+            'game_state': game.get_game_state()
+        }, room=game.room_code)
+        
+        # Add system message about player leaving
+        game.add_system_message(f"{player.name} left the game")
 
 @socketio.on('send_chat_message')
 def handle_send_chat_message(data):
@@ -124,6 +136,36 @@ def handle_join_game(data):
     
     # Add system message about player joining
     game.add_system_message(f"{player.name} joined the game")
+
+@socketio.on('close_lobby')
+def handle_close_lobby(data):
+    """Handle host closing the lobby"""
+    game = game_manager.get_game_by_socket(request.sid)
+    player = game_manager.get_player_by_socket(request.sid)
+    
+    if not game or not player:
+        emit('error', {'message': 'Game or player not found'})
+        return
+    
+    # Only host can close the lobby
+    if player.id != game.host_id:
+        emit('error', {'message': 'Only the host can close the lobby'})
+        return
+    
+    # Notify all players in the room that the lobby is closing
+    socketio.emit('lobby_closed', {
+        'message': f'The host has closed the lobby. Returning to main menu.'
+    }, room=game.room_code)
+    
+    # Remove all players from the room and delete the game
+    for player_socket_id in list(game_manager.player_to_game.keys()):
+        if game_manager.player_to_game.get(player_socket_id) == game.room_code:
+            leave_room(game.room_code, sid=player_socket_id)
+            del game_manager.player_to_game[player_socket_id]
+    
+    # Delete the game
+    del game_manager.games[game.room_code]
+    print(f"Lobby {game.room_code} has been closed by the host")
 
 @socketio.on('set_speaker')
 def handle_set_speaker(data):
@@ -502,4 +544,4 @@ def handle_get_game_state(data):
 if __name__ == '__main__':
     print("🎲 Mafia Game Server Starting...")
     print("📡 WebSocket server running on http://localhost:5001")
-    socketio.run(app, host='0.0.0.0', port=5001, debug=True)
+    socketio.run(app, host='0.0.0.0', port=5001, debug=True, use_reloader=False)

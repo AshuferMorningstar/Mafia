@@ -59,6 +59,8 @@ function connectToServer() {
     // Game event listeners
     socket.on('join_success', handleJoinSuccess);
     socket.on('player_joined', handlePlayerJoined);
+    socket.on('player_left', handlePlayerLeft);
+    socket.on('lobby_closed', handleLobbyClosed);
     socket.on('speaker_set', handleSpeakerSet);
     socket.on('game_started', handleGameStarted);
     socket.on('day_phase_started', handleDayPhaseStarted);
@@ -99,29 +101,37 @@ function goToWelcome() {
     if (createPlayerNameInput) createPlayerNameInput.value = '';
     if (joinPlayerNameInput) joinPlayerNameInput.value = '';
     if (roomCodeInput) roomCodeInput.value = '';
-    
-    // Hide join game form if it was shown
-    const joinGameForm = document.getElementById('join-game-form');
-    if (joinGameForm) {
-        joinGameForm.style.display = 'none';
-        joinGameForm.classList.add('hidden');
-    }
-    
-    // Reset game state
-    gameState = null;
-    playerId = null;
-    roomCode = null;
-    playerName = null;
-    
-    // Clear messages
-    const gameMessages = document.getElementById('game-messages');
-    if (gameMessages) {
-        gameMessages.innerHTML = '';
-    }
-    
-    // Reconnect to server if needed
-    if (!socket || !socket.connected) {
-        connectToServer();
+}
+
+function showLobbyTab(tabName) {
+    // Hide all tab content
+    document.querySelectorAll('.lobby-tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+
+    // Deactivate all tab buttons
+    document.querySelectorAll('.lobby-tab-button').forEach(button => {
+        button.classList.remove('active');
+    });
+
+    // Show the selected tab content
+    document.getElementById(`lobby-${tabName}-content`).classList.add('active');
+
+    // Activate the selected tab button
+    document.querySelector(`.lobby-tab-button[onclick="showLobbyTab('${tabName}')"]`).classList.add('active');
+
+    // Show/hide chat input based on tab
+    const chatInputContainer = document.getElementById('lobby-chat-input-container');
+    if (tabName === 'chat') {
+        chatInputContainer.style.display = 'flex';
+    } else {
+        chatInputContainer.style.display = 'none';
+        // Ensure no chat lines accidentally appended elsewhere (defensive)
+        // Move any stray chat-line nodes that might have been mis-parented
+        const lobbyPlayers = document.getElementById('lobby-players-content');
+        if (lobbyPlayers) {
+            lobbyPlayers.querySelectorAll('.chat-line').forEach(n => n.remove());
+        }
     }
 }
 
@@ -188,91 +198,69 @@ function handleJoinSuccess(data) {
     gameState = data.game_state;
     roomCode = gameState.room_code;
     
+    // Update room code display
+    const roomCodeElement = document.getElementById('lobby-room-code');
+    if (roomCodeElement) {
+        roomCodeElement.textContent = roomCode;
+    }
+    
     addMessage(data.message, 'success');
     showScreen('lobby-screen');
-    updateLobby();
+    updateLobbyPlayers();
 }
 
 function handlePlayerJoined(data) {
+    console.log('Player joined:', data);
     gameState = data.game_state;
-    updateLobby();
-    addMessage(`${data.player.name} joined the game`, 'success');
+    updateLobbyPlayers();
+    addMessage(`${data.player.name} has joined the lobby.`, 'system');
 }
 
-function updateLobby() {
-    document.getElementById('lobby-room-code').textContent = roomCode;
-    document.getElementById('player-count').textContent = gameState.alive_players.length;
-    
-    const container = document.getElementById('players-container');
-    container.innerHTML = '';
-    
+function handlePlayerLeft(data) {
+    console.log('Player left:', data);
+    gameState = data.game_state;
+    updateLobbyPlayers();
+    addMessage(`${data.player_name} has left the lobby.`, 'system');
+}
+
+function updateLobbyPlayers() {
+    const playersList = document.getElementById('players-list');
+    const playerCountTab = document.getElementById('player-count-tab');
+    const closeLobbyBtn = document.getElementById('close-lobby-btn');
+    const leaveLobbyBtn = document.getElementById('leave-lobby-btn');
+
+    if (!playersList || !playerCountTab || !gameState) {
+        return;
+    }
+
+    // Clear existing list
+    playersList.innerHTML = '';
+
+    // Update player count
+    playerCountTab.textContent = gameState.alive_count;
+
+    // Add each player to the list
     gameState.alive_players.forEach(player => {
-        const playerDiv = document.createElement('div');
-        playerDiv.className = 'player-item';
-        if (player.id === playerId) {
-            playerDiv.classList.add('you');
-        }
-        
-        let badges = '';
-        if (player.id === gameState.host_id) {
-            badges += '<span class="host-badge">👑 Host</span>';
-        }
+        const li = document.createElement('li');
+        li.textContent = player.name;
         if (player.id === gameState.speaker_id) {
-            badges += '<span class="speaker-badge">🎙️ Speaker</span>';
+            li.innerHTML += ' <span class="speaker-tag">🎙️ Speaker</span>';
         }
-        
-        playerDiv.innerHTML = `
-            <span>${player.name} ${player.id === playerId ? '(You)' : ''} ${badges}</span>
-            <div>
-                ${gameState.speaker_id !== player.id && gameState.you_are_host && !gameState.game_settings?.random_speaker ? 
-                    `<button class="btn" onclick="setSpeaker('${player.id}')">Make Speaker</button>` : ''}
-            </div>
-        `;
-        container.appendChild(playerDiv);
+        if (player.id === playerId) {
+            li.innerHTML += ' (You)';
+            li.classList.add('current-player');
+        }
+        playersList.appendChild(li);
     });
-    
-    // Show/hide speaker settings based on host status
-    const speakerSettings = document.getElementById('speaker-settings');
-    if (gameState.you_are_host) {
-        speakerSettings.classList.add('host-only');
-        
-        // Update random speaker toggle
-        const randomToggle = document.getElementById('random-speaker-toggle');
-        randomToggle.checked = gameState.game_settings?.random_speaker || false;
-        
-        // Show/hide manual controls based on random speaker setting
-        const manualControls = document.getElementById('manual-speaker-controls');
-        if (gameState.game_settings?.random_speaker) {
-            manualControls.style.display = 'block';
-        } else {
-            manualControls.style.display = 'none';
-        }
-    } else {
-        speakerSettings.classList.remove('host-only');
-    }
-    
-    // Enable start button if we have enough players and current player is speaker
-    const startBtn = document.getElementById('start-game-btn');
-    const speakerNotice = document.getElementById('speaker-requirement');
-    const canStart = gameState.alive_players.length >= 6 && gameState.you_are_speaker;
-    const hasEnoughPlayers = gameState.alive_players.length >= 6;
-    const hasSpeaker = gameState.speaker_id !== null;
-    
-    startBtn.disabled = !canStart;
-    
-    // Show/hide speaker requirement notice
-    if (hasEnoughPlayers && !hasSpeaker && gameState.you_are_host) {
-        speakerNotice.classList.remove('hidden');
-    } else {
-        speakerNotice.classList.add('hidden');
-    }
-    
-    // Update chat messages
-    updateChatMessages();
-}
 
-function setSpeaker(speakerId) {
-    socket.emit('set_speaker', { speaker_id: speakerId });
+    // Show correct lobby button - host sees Close, others see Leave
+    if (gameState && gameState.you_are_host === true) {
+        if (closeLobbyBtn) closeLobbyBtn.style.display = 'block';
+        if (leaveLobbyBtn) leaveLobbyBtn.style.display = 'none';
+    } else {
+        if (closeLobbyBtn) closeLobbyBtn.style.display = 'none';
+        if (leaveLobbyBtn) leaveLobbyBtn.style.display = 'block';
+    }
 }
 
 function handleSpeakerSet(data) {
@@ -584,6 +572,13 @@ function addChatMessage(message) {
     let containerId = '';
     
     if (currentScreen === 'lobby-screen') {
+        // Only add message if chat tab is visible
+        const chatTabContent = document.getElementById('lobby-chat-content');
+        if (!chatTabContent || !chatTabContent.classList.contains('active')) {
+            // If chat is not active, we can store it as unread or simply not render
+            // For now, we'll just not render it to prevent it showing in other tabs.
+            return; 
+        }
         containerId = 'lobby-chat-messages';
     } else if (currentScreen === 'game-screen') {
         containerId = 'chat-messages';
@@ -593,7 +588,7 @@ function addChatMessage(message) {
     if (!container) return;
     
     const messageDiv = document.createElement('div');
-    messageDiv.className = `chat-message ${message.type}`;
+    messageDiv.className = `chat-line ${message.type}`;
     
     const time = new Date(message.timestamp * 1000).toLocaleTimeString([], {
         hour: '2-digit',
@@ -601,21 +596,9 @@ function addChatMessage(message) {
     });
     
     if (message.type === 'system') {
-        messageDiv.innerHTML = `
-            <div class="chat-message-header">
-                <span class="chat-message-sender">System</span>
-                <span class="chat-message-time">${time}</span>
-            </div>
-            <div class="chat-message-content">${message.message}</div>
-        `;
+        messageDiv.textContent = `[${time}] System: ${message.message}`;
     } else {
-        messageDiv.innerHTML = `
-            <div class="chat-message-header">
-                <span class="chat-message-sender">${message.player_name}</span>
-                <span class="chat-message-time">${time}</span>
-            </div>
-            <div class="chat-message-content">${message.message}</div>
-        `;
+        messageDiv.textContent = `[${time}] ${message.player_name}: ${message.message}`;
     }
     
     container.appendChild(messageDiv);
@@ -1261,4 +1244,15 @@ function shareRoom() {
         copyRoomCode();
         addMessage('Share not supported, room code copied instead.', 'info');
     }
+}
+
+function closeLobby() {
+    if (confirm('Are you sure you want to close this lobby for everyone?')) {
+        socket.emit('close_lobby', { room_code: roomCode });
+    }
+}
+
+function handleLobbyClosed(data) {
+    addMessage(data.message, 'system');
+    goToWelcome();
 }

@@ -759,12 +759,6 @@ body {
     background-clip: text;
 }
 
-@keyframes gradient {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-}
-
 .game-screen {
     display: none;
     opacity: 0;
@@ -860,350 +854,285 @@ input[type="text"]:focus, input[type="password"]:focus {
     background: linear-gradient(45deg, #ff6b6b, #ee5a52);
 }
 
-.players-list {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
+.players-list-container {
+    width: 100%;
+    margin-top: 2rem;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
     padding: 1rem;
-    margin: 1rem 0;
 }
 
-.role-badge {
-    padding: 0.25rem 0.75rem;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.role-civilian { 
-    background: linear-gradient(45deg, #3498db, #2980b9);
-    color: white;
-}
-
-.role-killer { 
-    background: linear-gradient(45deg, #e74c3c, #c0392b);
-    color: white;
-}
-
-.role-doctor { 
-    background: linear-gradient(45deg, #2ecc71, #27ae60);
-    color: white;
-}
-
-.role-detective { 
-    background: linear-gradient(45deg, #f39c12, #e67e22);
-    color: white;
-}
-
-.role-unknown {
-    background: linear-gradient(45deg, #95a5a6, #7f8c8d);
-    color: white;
-}
-
-/* Player item enhancements */
-.player-item {
+.players-list-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.75rem;
-    margin: 0.5rem 0;
-    background: rgba(255, 255, 255, 0.08);
-    border-radius: 10px;
-    border: 2px solid transparent;
-    transition: all 0.3s ease;
-}
-
-.player-item:hover {
-    background: rgba(255, 255, 255, 0.12);
-    transform: translateY(-1px);
-}
-
-.player-item.dead {
-    opacity: 0.6;
-    text-decoration: line-through;
-    background: rgba(231, 76, 60, 0.1);
-    border-color: rgba(231, 76, 60, 0.3);
-}
-
-.player-item.you {
-    border-color: #4ecdc4;
-    background: rgba(78, 205, 196, 0.1);
-    box-shadow: 0 0 10px rgba(78, 205, 196, 0.2);
-}
-
-/* Role visibility indicator */
-.role-visible {
-    animation: roleReveal 0.5s ease-in;
-}
-
-@keyframes roleReveal {
-    from {
-        opacity: 0;
-        transform: scale(0.8);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-/* Enhanced game info */
-.game-info {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 15px;
-    padding: 1.5rem;
-    margin: 1rem 0;
-    text-align: center;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.phase-indicator {
-    font-size: 1.8rem;
-    font-weight: 700;
     margin-bottom: 1rem;
-    padding: 1rem;
-    border-radius: 15px;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    color: #eee;
 }
 
-.phase-night {
-    color: #3c6382;
-    background: linear-gradient(45deg, #0c2461, #1e3799);
-}
-
-.phase-day {
-    color: #f39c12;
-    background: linear-gradient(45deg, #f39c12, #e67e22);
-}
-
-.phase-voting {
-    color: #e74c3c;
-    background: linear-gradient(45deg, #e74c3c, #c0392b);
-}
-
-.messages {
+.players-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
     max-height: 200px;
     overflow-y: auto;
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 10px;
-    padding: 1rem;
-    margin: 1rem 0;
 }
 
-.message {
+.players-list li {
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
     margin-bottom: 0.5rem;
-    padding: 0.5rem;
-    border-radius: 5px;
-    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    font-size: 1rem;
 }
 
-.error {
-    background: rgba(231, 76, 60, 0.3);
-    border-left: 4px solid #e74c3c;
+.players-list li.current-player {
+    font-weight: bold;
+    color: #4caf50;
 }
 
-.success {
-    background: rgba(46, 204, 113, 0.3);
-    border-left: 4px solid #2ecc71;
-}
-
-.action-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin: 1rem 0;
-}
-
-.hidden {
-    display: none;
-}
-
-.grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1rem;
-    margin: 1rem 0;
-}
-
-/* Chat Styles */
-.chat-container {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
-    margin: 1rem 0;
-    overflow: hidden;
-    max-height: 400px;
+.lobby-main-content {
     display: flex;
     flex-direction: column;
+    width: 100%;
+    margin-top: 1rem;
+    flex-grow: 1;
 }
 
-.chat-header {
-    background: rgba(255, 255, 255, 0.1);
-    padding: 0.75rem 1rem;
+.lobby-tabs {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.chat-header h3 {
-    margin: 0;
-    font-size: 1.1rem;
+.lobby-tab-button {
+    flex: 1;
+    padding: 0.75rem;
+    background: none;
+    border: none;
+    color: #aaa;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-bottom: 2px solid transparent;
 }
 
-.chat-messages {
-    flex: 1;
+.lobby-tab-button.active {
+    color: #fff;
+    border-bottom-color: #4caf50;
+}
+
+/* Unified lobby tab content styling */
+.lobby-tab-content { 
+    display: none; 
+    flex-direction: column; 
+    flex-grow: 1; 
+    padding: 0; 
+    position: relative; 
+}
+.lobby-tab-content.active { 
+    display: flex !important; 
+}
+.lobby-tab-content:not(.active){
+    display: none !important;
+}
+
+#lobby-chat-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+#lobby-chat-content .chat-messages {
+    flex-grow: 1;
     padding: 1rem;
     overflow-y: auto;
-    max-height: 250px;
-    min-height: 150px;
+    min-height: 0;
+    padding-bottom: 80px;
 }
 
-.chat-message {
-    margin-bottom: 0.75rem;
-    padding: 0.5rem;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.05);
-    border-left: 3px solid transparent;
+/* Simple chat line styling (reset from bubble version) */
+#lobby-chat-content .chat-line {
+    font-size: 0.8rem;
+    line-height: 1.3;
+    margin-bottom: 0.35rem;
+    color: #ffffff;
+    font-family: monospace;
+    white-space: pre-wrap;
+    word-break: break-word;
 }
 
-.chat-message.system {
-    background: rgba(52, 152, 219, 0.2);
-    border-left-color: #3498db;
+#lobby-chat-content .chat-line.system {
+    color: #ffc107;
+}
+
+.lobby-header {
+    text-align: center;
+    padding: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.lobby-logo {
+    width: 150px;
+    height: auto;
+    margin-bottom: 1rem;
+}
+
+.lobby-header h2 {
+    margin: 0 0 0.5rem 0;
+    font-size: 2rem;
+    color: #fff;
+}
+
+.lobby-subtitle {
+    margin: 0 0 1rem 0;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+    text-align: center;
     font-style: italic;
 }
 
-.chat-message.normal {
-    border-left-color: #2ecc71;
-}
-
-.chat-message.whisper {
-    background: rgba(155, 89, 182, 0.2);
-    border-left-color: #9b59b6;
-}
-
-.chat-message-header {
+.room-info {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     align-items: center;
-    margin-bottom: 0.25rem;
+    gap: 0.6rem;
+    justify-content: center;
 }
 
-.chat-message-sender {
-    font-weight: 600;
-    color: #4ecdc4;
+.room-info > span {
+    margin-left: 2rem;
 }
 
-.chat-message-time {
-    font-size: 0.8rem;
-    opacity: 0.7;
-}
-
-.chat-message-content {
-    color: #e0e0e0;
-}
-
-.chat-input-container {
-    display: flex !important;
-    padding: 0.5rem !important;
-    gap: 0.5rem !important;
-    background: rgba(255, 255, 255, 0.05);
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    align-items: center !important;
-}
-
-.chat-input-container input {
-    flex: 1 !important;
-    margin: 0 !important;
-    padding: 0.75rem 1rem !important;
-    border-radius: 25px !important;
-    border: 1px solid rgba(255, 255, 255, 0.2) !important;
-    background: rgba(255, 255, 255, 0.1) !important;
-    color: white !important;
+/* Updated room code styling - v4 */
+.room-code-display {
     font-size: 0.9rem !important;
-    min-width: 0 !important;
-    width: auto !important;
+    font-weight: bold;
+    letter-spacing: 1px;
+    color: #4caf50;
+    background-color: rgba(0, 0, 0, 0.3);
+    padding: 0.3rem 0.6rem !important;
+    border-radius: 6px;
+    margin: 0;
 }
 
-.chat-input-container .btn {
-    margin: 0 !important;
-    padding: 0.75rem !important;
-    width: 45px !important;
-    height: 45px !important;
-    border-radius: 50% !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    font-size: 0.8rem !important;
-    flex-shrink: 0 !important;
-    min-width: 45px !important;
-    max-width: 45px !important;
+.room-code-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    align-items: center;
 }
 
-/* Remove duplicate input styling */
-.chat-input-container input {
-    flex: 1 !important;
-    margin: 0 !important;
-    min-width: 0 !important;
+.lobby-content-box {
+    width: 100%;
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    margin-top: 1rem;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 300px;
 }
 
-/* Specific targeting for lobby chat input */
+.lobby-content-box {
+    width: 100%;
+    background-color: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    margin-top: 1rem;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    min-height: 400px;
+}
+
+/* Remove duplicate style block; scrolling handled per tab (chat has own). */
+
+.room-info {
+    margin-top: 0.5rem;
+}
+
+.room-code-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    justify-content: center;
+}
+
+.lobby-footer {
+    width: 100%;
+    margin-top: auto;
+    padding-top: 1rem;
+}
+
+.speaker-warning {
+    background-color: rgba(255, 193, 7, 0.1);
+    border: 1px solid #ffc107;
+    color: #ffc107;
+    padding: 0.75rem;
+    border-radius: 8px;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+#lobby-chat-input-container {
+    display: flex;
+    flex-direction: row;
+    gap: 0.2rem;
+    padding: 1rem;
+    align-items: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: rgba(0, 0, 0, 0.1);
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: 0;
+    z-index: 1;
+}
+
 #lobby-chat-input {
-    flex: 1 !important;
-    width: auto !important;
-    min-width: 0 !important;
+    flex-grow: 1;
+    padding: 0.9rem 1.2rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 25px;
+    background-color: rgba(0, 0, 0, 0.3);
+    color: #fff;
+    font-size: 1rem;
+    width: 100%;
+    min-width: 250px;
 }
 
-/* Specific targeting for the Send button in chat */
-.chat-input-container .btn.btn-secondary {
-    width: 45px !important;
-    height: 45px !important;
-    min-width: 45px !important;
-    max-width: 45px !important;
-    border-radius: 50% !important;
-    padding: 0 !important;
-    font-size: 0.8rem !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
-
-#chat-status {
-    font-size: 0.8rem;
-    color: #2ecc71;
-}
-
-/* Room Info Styles */
-.room-info {
-    background: linear-gradient(45deg, rgba(78, 205, 196, 0.1), rgba(69, 183, 209, 0.1));
-    border: 2px solid rgba(78, 205, 196, 0.3);
-    border-radius: 15px;
-    padding: 1.5rem;
-    margin: 1rem 0;
-    text-align: center;
-}
-
-.room-info {
-    text-align: center;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 15px;
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
-}
-
-.room-code-container {
+.chat-send-btn {
+    min-width: 40px;
+    height: 40px;
+    padding: 0.5rem;
+    border-radius: 50%;
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 1rem;
-    margin: 1rem 0;
+    flex-shrink: 0;
+}
+
+.chat-send-btn svg {
+    width: 18px;
+    height: 18px;
+    stroke: #ffffff;
 }
 
 .room-code-display {
     font-size: 2rem;
-    font-weight: 700;
-    letter-spacing: 3px;
-    color: #4ecdc4;
+    font-weight: bold;
+    letter-spacing: 2px;
+    color: #fff;
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    margin-right: 1rem;
 }
 
 .btn-icon {
@@ -1211,13 +1140,14 @@ input[type="text"]:focus, input[type="password"]:focus {
     border: none;
     color: white;
     border-radius: 50%;
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
     display: flex;
     justify-content: center;
     align-items: center;
     cursor: pointer;
     transition: all 0.3s ease;
+    padding: 2px;
 }
 
 .btn-icon:hover {
@@ -1226,9 +1156,11 @@ input[type="text"]:focus, input[type="password"]:focus {
 }
 
 .btn-icon svg {
-    width: 24px;
-    height: 24px;
+    width: 18px !important;
+    height: 18px !important;
     fill: #ffffff;
+    stroke: #ffffff;
+    flex-shrink: 0;
 }
 
 /* Speaker Settings Styles */
@@ -1514,25 +1446,6 @@ input[type="text"]:focus, input[type="password"]:focus {
 /* === Instagram-style Information Panels === */
 
 /* Panel Overlay */
-.info-panel-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 2000;
-    opacity: 0;
-    visibility: hidden;
-    transition: all 0.3s ease;
-}
-
-.info-panel-overlay.active {
-    opacity: 1;
-    visibility: visible;
-}
-
-/* Panel Container */
 .info-panel-overlay {
     position: fixed;
     top: 0;
