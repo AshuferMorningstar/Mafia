@@ -5,6 +5,7 @@ let gameState = null;
 let playerId = null;
 let roomCode = null;
 let playerName = null;
+let isHost = false;
 
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', function() {
@@ -87,6 +88,12 @@ function showJoinGame() {
 function goToWelcome() {
     console.log("Going to welcome screen");
     showScreen('welcome-screen');
+    
+    // Reset game state
+    isHost = false;
+    roomCode = null;
+    playerId = null;
+    gameState = null;
     
     // Close mobile menu if it's open
     if (mobileMenuOpen) {
@@ -176,6 +183,7 @@ function joinGame() {
     
     playerName = name;
     roomCode = code;
+    isHost = false; // Mark as not host since we're joining an existing room
     joinGameWithCode(code);
 }
 
@@ -226,7 +234,8 @@ function handlePlayerLeft(data) {
 function updateLobbyPlayers() {
     const playersList = document.getElementById('players-list');
     const playerCountTab = document.getElementById('player-count-tab');
-    const closeLobbyBtn = document.getElementById('close-lobby-btn');
+    const startGameBtn = document.getElementById('start-game-btn');
+    const closeRoomBtn = document.getElementById('close-room-btn');
     const leaveLobbyBtn = document.getElementById('leave-lobby-btn');
 
     if (!playersList || !playerCountTab || !gameState) {
@@ -253,12 +262,16 @@ function updateLobbyPlayers() {
         playersList.appendChild(li);
     });
 
-    // Show correct lobby button - host sees Close, others see Leave
-    if (gameState && gameState.you_are_host === true) {
-        if (closeLobbyBtn) closeLobbyBtn.style.display = 'block';
+    // Show correct buttons based on host status
+    if (isHost) {
+        // Host sees Start Game and Close Room buttons
+        if (startGameBtn) startGameBtn.style.display = 'block';
+        if (closeRoomBtn) closeRoomBtn.style.display = 'block';
         if (leaveLobbyBtn) leaveLobbyBtn.style.display = 'none';
     } else {
-        if (closeLobbyBtn) closeLobbyBtn.style.display = 'none';
+        // Non-host sees only Leave Lobby button
+        if (startGameBtn) startGameBtn.style.display = 'none';
+        if (closeRoomBtn) closeRoomBtn.style.display = 'none';
         if (leaveLobbyBtn) leaveLobbyBtn.style.display = 'block';
     }
 }
@@ -311,6 +324,7 @@ function createGame() {
         console.log('[DEBUG] Response JSON:', data);
         if (data.success) {
             roomCode = data.room_code;
+            isHost = true; // Mark as host since we created the room
             console.log('[DEBUG] Room created. Code:', roomCode);
             joinGameWithCode(roomCode);
         } else {
@@ -1246,10 +1260,19 @@ function shareRoom() {
     }
 }
 
-function closeLobby() {
-    if (confirm('Are you sure you want to close this lobby for everyone?')) {
+function closeRoom() {
+    if (confirm('Are you sure you want to close this room for everyone?')) {
         socket.emit('close_lobby', { room_code: roomCode });
     }
+}
+
+function leaveLobby() {
+    if (socket) {
+        socket.disconnect();
+        socket = null;
+    }
+    isHost = false; // Reset host status when leaving
+    goToWelcome();
 }
 
 function handleLobbyClosed(data) {
