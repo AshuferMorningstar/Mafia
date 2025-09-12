@@ -455,10 +455,16 @@ body {
 }
 
 .splash-subtitle {
-    font-size: 1.5rem;
-    color: #e0e0e0;
+    font-family: 'Cinzel Decorative', 'UnifrakturMaguntia', serif;
+    font-size: 1.3rem;
+    font-weight: 700;
     margin-bottom: 3rem;
-    opacity: 0.9;
+    background: linear-gradient(140deg, #fdfdfd 0%, #e8e8e8 12%, #d4d4d4 28%, #bcbcbc 45%, #9d9d9d 60%, #cfcfcf 75%, #fafafa 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.4));
 }
 
 .loading-spinner {
@@ -555,10 +561,16 @@ body {
 }
 
 .welcome-content p {
-    font-size: 1.2rem;
-    color: rgba(255, 255, 255, 0.9);
+    font-family: 'Cinzel Decorative', 'UnifrakturMaguntia', serif;
+    font-size: 1.1rem;
+    font-weight: 600;
     margin-bottom: 3rem;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    background: linear-gradient(140deg, #fdfdfd 0%, #e8e8e8 12%, #d4d4d4 28%, #bcbcbc 45%, #9d9d9d 60%, #cfcfcf 75%, #fafafa 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.4));
 }
 
 .welcome-buttons {
@@ -598,10 +610,16 @@ body {
 }
 
 .page-header p {
-    font-size: 1.1rem;
-    color: rgba(255, 255, 255, 0.8);
+    font-family: 'Cinzel Decorative', 'UnifrakturMaguntia', serif;
+    font-size: 1rem;
+    font-weight: 600;
     margin: 0;
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    background: linear-gradient(140deg, #fdfdfd 0%, #e8e8e8 12%, #d4d4d4 28%, #bcbcbc 45%, #9d9d9d 60%, #cfcfcf 75%, #fafafa 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.4));
 }
 
 /* Stylized Metallic Mafia Title */
@@ -1049,10 +1067,17 @@ input[type="text"]:focus, input[type="password"]:focus {
 
 .lobby-subtitle {
     margin: 0 0 1rem 0;
-    font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.7);
+    font-family: 'Cinzel Decorative', 'UnifrakturMaguntia', serif;
+    font-size: 0.85rem;
+    font-weight: 600;
     text-align: center;
     font-style: italic;
+    background: linear-gradient(140deg, #fdfdfd 0%, #e8e8e8 12%, #d4d4d4 28%, #bcbcbc 45%, #9d9d9d 60%, #cfcfcf 75%, #fafafa 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.4));
 }
 
 .room-info {
