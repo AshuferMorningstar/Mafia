@@ -280,8 +280,8 @@ def handle_start_game(data):
         emit('error', {'message': 'Game or player not found'})
         return
     
-    if player.id != game.speaker_id:
-        emit('error', {'message': 'Only the speaker can start the game'})
+    if player.id != game.host_id:
+        emit('error', {'message': 'Only the host can start the game'})
         return
     
     if game.phase != GamePhase.WAITING:
