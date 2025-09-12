@@ -691,8 +691,8 @@ body {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
+    background: linear-gradient(135deg, #C0C0C0 0%, #89CFF0 100%) !important; /* Silver to Light Blue */
+    color: #1a2a4c !important;
     padding: 1rem 2.5rem;
     font-size: 1.1rem;
     border: none;
@@ -705,7 +705,7 @@ body {
 .btn-primary:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    background: linear-gradient(135deg, #89CFF0 0%, #C0C0C0 100%) !important; /* Light Blue to Silver */
 }
 
 /* Hide original header for dedicated pages */
@@ -876,9 +876,9 @@ input[type="text"]:focus, input[type="password"]:focus {
 }
 
 .btn {
-    background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+    background: linear-gradient(45deg, #C0C0C0, #89CFF0) !important; /* Silver to Light Blue */
     border: none;
-    color: white;
+    color: #1a2a4c !important;
     padding: 0.75rem 2rem;
     border-radius: 10px;
     cursor: pointer;
@@ -900,7 +900,7 @@ input[type="text"]:focus, input[type="password"]:focus {
 }
 
 .btn-secondary {
-    background: linear-gradient(45deg, #45b7d1, #96ceb4);
+    background: linear-gradient(45deg, #a8a8a8, #6BB6FF) !important; /* Darker silver to blue */
 }
 
 .btn-danger {
