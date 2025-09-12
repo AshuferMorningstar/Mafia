@@ -9,6 +9,18 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=UnifrakturMaguntia&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css?v=20240912e">
+    <script>
+        // Auto-refresh CSS to see live changes during development
+        let lastCSSCheck = Date.now();
+        setInterval(() => {
+            const timestamp = Date.now();
+            const cssLink = document.querySelector('link[href*="styles.css"]');
+            if (cssLink) {
+                const newHref = `styles.css?v=${timestamp}`;
+                cssLink.href = newHref;
+            }
+        }, 2000); // Check every 2 seconds
+    </script>
 </head>
 <body>
     <!-- Side Panel (Desktop) / Top Dashboard (Mobile/Tablet) -->

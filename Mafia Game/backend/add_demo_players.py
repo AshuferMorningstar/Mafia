@@ -2,7 +2,7 @@ import socketio
 import time
 
 # Configuration
-ROOM_CODE = "UAYUHJ"
+ROOM_CODE = "UU5J28"
 SERVER_URL = "http://127.0.0.1:5001"
 DEMO_PLAYERS = ["Player1", "Player2", "Player3", "Player4", "Player5"]
 

@@ -909,34 +909,47 @@ function showScreen(screenId) {
         mainContainer.style.padding = ''; // Reset padding
         if (originalHeader) originalHeader.style.display = 'block';
         
-        // Restore navigation for other game screens
+        // Handle navigation for other game screens
         const sidePanel = document.getElementById('side-panel');
         const topDashboard = document.getElementById('top-dashboard');
         const topLogoSection = document.getElementById('top-logo-section');
         
-        // Only show side panel on desktop (>768px), not mobile
-        if (sidePanel) {
-            if (window.innerWidth > 768) {
-                sidePanel.style.display = 'flex';
-            } else {
-                sidePanel.style.display = 'none';
+        // Hide side panel for actual game screens (game-screen, game-over-screen)
+        if (screenId === 'game-screen' || screenId === 'game-over-screen') {
+            // Hide navigation for game screens
+            if (sidePanel) sidePanel.style.display = 'none';
+            if (topDashboard) topDashboard.style.display = 'none';
+            if (topLogoSection) topLogoSection.style.display = 'none';
+            
+            // Adjust body padding
+            document.body.style.paddingLeft = '0';
+            document.body.style.paddingTop = '0';
+        } else {
+            // Show navigation for other screens (like settings, etc.)
+            // Only show side panel on desktop (>768px), not mobile
+            if (sidePanel) {
+                if (window.innerWidth > 768) {
+                    sidePanel.style.display = 'flex';
+                } else {
+                    sidePanel.style.display = 'none';
+                }
             }
-        }
-        
-        // Only show top dashboard on mobile (<=768px), not desktop
-        if (topDashboard) {
-            if (window.innerWidth <= 768) {
-                topDashboard.style.display = 'flex';
-            } else {
-                topDashboard.style.display = 'none';
+            
+            // Only show top dashboard on mobile (<=768px), not desktop
+            if (topDashboard) {
+                if (window.innerWidth <= 768) {
+                    topDashboard.style.display = 'flex';
+                } else {
+                    topDashboard.style.display = 'none';
+                }
             }
+            
+            if (topLogoSection) topLogoSection.style.display = 'block';
+            
+            // Restore body padding
+            document.body.style.paddingLeft = '';
+            document.body.style.paddingTop = '';
         }
-        
-        if (topLogoSection) topLogoSection.style.display = 'block';
-        
-        // Restore body padding
-        document.body.style.paddingLeft = '';
-        document.body.style.paddingTop = '';
         
         const targetScreen = document.getElementById(screenId);
         targetScreen.style.display = 'block';
