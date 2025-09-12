@@ -32,6 +32,13 @@
             <li><button class="side-panel-btn" onclick="togglePanel('game-tips')">💡 Game Tips</button></li>
             <li><button class="side-panel-btn" onclick="togglePanel('about')">ℹ️ About</button></li>
         </ul>
+        
+        <!-- Settings Gear Icon -->
+        <div class="side-panel-settings">
+            <button class="settings-gear-btn" id="side-panel-settings-btn" onclick="toggleSettingsDropdown('side-panel')" title="Game Settings">
+                ⚙️
+            </button>
+        </div>
     </nav>
 
     <!-- Information Panels -->
@@ -294,11 +301,16 @@
     <nav class="top-dashboard" id="top-dashboard">
         <div class="top-dashboard-content">
             <span class="top-dashboard-title">Mafia Game</span>
-            <button class="hamburger-menu" onclick="toggleMobileMenu()" title="Menu">
-                <span class="hamburger-line"></span>
-                <span class="hamburger-line"></span>
-                <span class="hamburger-line"></span>
-            </button>
+            <div class="top-dashboard-controls">
+                <button class="settings-gear-btn" id="top-dashboard-settings-btn" onclick="toggleSettingsDropdown('top-dashboard')" title="Game Settings">
+                    ⚙️
+                </button>
+                <button class="hamburger-menu" onclick="toggleMobileMenu()" title="Menu">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </button>
+            </div>
         </div>
     </nav>
 
@@ -430,7 +442,11 @@
         </div>
 
         <!-- Lobby Screen -->
-        <div id="lobby-screen" class="game-screen">
+                <!-- Gear icon moved outside lobby-screen for true fixed positioning -->
+                <button class="settings-gear-btn lobby-settings-top-left" id="lobby-gear-btn" onclick="toggleSettingsDropdown('lobby')" title="Game Settings" style="display:none;">
+                    ⚙️
+                </button>
+                <div id="lobby-screen" class="game-screen">
             <div class="lobby-header">
                 <h2 class="main-title lobby-main-title">Game Lobby</h2>
                 <p class="lobby-subtitle">Share this code with your friends & family</p>
@@ -606,6 +622,42 @@
             </div>
         </div>
     </div>
+
+    <!-- Settings Dropdown Panel -->
+    <div class="settings-dropdown" id="settings-dropdown">
+        <div class="settings-dropdown-header">
+            <h3>⚙️ Game Settings</h3>
+            <button class="close-settings-btn" onclick="closeSettingsDropdown()">✕</button>
+        </div>
+        <div class="settings-dropdown-content">
+            <div class="setting-section">
+                <h4>🎙️ Speaker Mode</h4>
+                <p class="setting-description">Choose who controls the game flow</p>
+                <div class="radio-group">
+                    <label class="radio-option">
+                        <input type="radio" name="speaker-mode" value="computer" id="computer-speaker" checked>
+                        <span class="radio-custom"></span>
+                        <div class="radio-text">
+                            <strong>🤖 Computer Speaker</strong>
+                            <small>AI moderates the game automatically</small>
+                        </div>
+                    </label>
+                    <label class="radio-option">
+                        <input type="radio" name="speaker-mode" value="random" id="random-speaker">
+                        <span class="radio-custom"></span>
+                        <div class="radio-text">
+                            <strong>🎲 Random Player Speaker</strong>
+                            <small>Randomly assign a player as moderator</small>
+                        </div>
+                    </label>
+                </div>
+            </div>
+            <div class="setting-actions">
+                <button class="apply-settings-btn" onclick="applySettings()">Apply Settings</button>
+            </div>
+        </div>
+    </div>
+    <div class="settings-dropdown-overlay" id="settings-dropdown-overlay" onclick="closeSettingsDropdown()"></div>
 
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="game.js"></script>

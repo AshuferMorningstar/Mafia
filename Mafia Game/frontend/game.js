@@ -797,6 +797,10 @@ function showScreen(screenId) {
     const mainContainer = document.getElementById('main-container');
     const originalHeader = document.getElementById('original-header');
     
+    // Hide lobby gear icon by default
+    const lobbyGearIcon = document.getElementById('lobby-gear-btn');
+    if (lobbyGearIcon) lobbyGearIcon.style.display = 'none';
+    
     // Remove active class from all screens
     screens.forEach(screen => {
         screen.classList.remove('active');
@@ -888,6 +892,17 @@ function showScreen(screenId) {
         if (sidePanel) sidePanel.style.display = 'none';
         if (topDashboard) topDashboard.style.display = 'none';
         if (topLogoSection) topLogoSection.style.display = 'none';
+
+        // Show lobby gear icon and set its position based on screen size
+        const lobbyGearIcon = document.getElementById('lobby-gear-btn');
+        if (lobbyGearIcon) {
+            lobbyGearIcon.style.display = 'block';
+            if (window.innerWidth <= 768) {
+                lobbyGearIcon.classList.add('force-mobile-position');
+            } else {
+                lobbyGearIcon.classList.remove('force-mobile-position');
+            }
+        }
 
         // Adjust body padding
         document.body.style.paddingLeft = '0';
@@ -1291,4 +1306,105 @@ function leaveLobby() {
 function handleLobbyClosed(data) {
     addMessage(data.message, 'system');
     goToWelcome();
+}
+
+// Settings Dropdown Functions
+let currentSpeakerMode = 'computer'; // Default to computer speaker
+
+function toggleSettingsDropdown(location) {
+    console.log('Opening settings dropdown from:', location);
+    const dropdown = document.getElementById('settings-dropdown');
+    const overlay = document.getElementById('settings-dropdown-overlay');
+    
+    // Show dropdown and overlay
+    dropdown.classList.add('active');
+    overlay.classList.add('active');
+    
+    // Close mobile menu if open (though we removed the mobile menu gear icon)
+    if (location === 'mobile-menu') {
+        closeMobileMenu();
+    }
+    
+    // Load current settings
+    loadCurrentSettings();
+}
+
+function closeSettingsDropdown() {
+    const dropdown = document.getElementById('settings-dropdown');
+    const overlay = document.getElementById('settings-dropdown-overlay');
+    
+    dropdown.classList.remove('active');
+    overlay.classList.remove('active');
+}
+
+function loadCurrentSettings() {
+    // Load current speaker mode setting
+    const computerRadio = document.getElementById('computer-speaker');
+    const randomRadio = document.getElementById('random-speaker');
+    
+    if (currentSpeakerMode === 'computer') {
+        computerRadio.checked = true;
+        randomRadio.checked = false;
+    } else {
+        computerRadio.checked = false;
+        randomRadio.checked = true;
+    }
+}
+
+function applySettings() {
+    // Get selected speaker mode
+    const computerRadio = document.getElementById('computer-speaker');
+    const randomRadio = document.getElementById('random-speaker');
+    
+    if (computerRadio.checked) {
+        currentSpeakerMode = 'computer';
+    } else if (randomRadio.checked) {
+        currentSpeakerMode = 'random';
+    }
+    
+    console.log('Applied speaker mode:', currentSpeakerMode);
+    
+    // Only host can change settings
+    if (isHost && socket && roomCode) {
+        // Send settings to server
+        socket.emit('update_speaker_mode', {
+            room_code: roomCode,
+            speaker_mode: currentSpeakerMode
+        });
+        
+        addMessage(`Speaker mode changed to: ${currentSpeakerMode === 'computer' ? 'Computer Speaker' : 'Random Player Speaker'}`, 'system');
+    } else if (!isHost) {
+        addMessage('Only the host can change game settings', 'error');
+        // Revert to previous setting
+        loadCurrentSettings();
+        return;
+    }
+    
+    // Save to local storage
+    localStorage.setItem('speaker_mode', currentSpeakerMode);
+    
+    // Close dropdown
+    closeSettingsDropdown();
+}
+
+// Initialize settings from local storage
+function initializeSettings() {
+    const savedSpeakerMode = localStorage.getItem('speaker_mode');
+    if (savedSpeakerMode) {
+        currentSpeakerMode = savedSpeakerMode;
+    }
+}
+
+// Load settings when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initializeSettings();
+});
+
+// Handle speaker mode updates from server
+if (socket) {
+    socket.on('speaker_mode_updated', function(data) {
+        currentSpeakerMode = data.speaker_mode;
+        addMessage(`Host changed speaker mode to: ${data.speaker_mode === 'computer' ? 'Computer Speaker' : 'Random Player Speaker'}`, 'system');
+        loadCurrentSettings();
+    });
 }
