@@ -1411,6 +1411,22 @@ input[type="text"]:focus, input[type="password"]:focus {
     }
 }
 
+/* Desktop refinement: lift back button so it doesn't overlap heading */
+@media (min-width: 900px) {
+    .page-header {
+        padding-top: 2.2rem; /* extra space for elevated button */
+    }
+    .btn-back {
+        top: 0.4rem; /* near top edge */
+        transform: none; /* remove vertical centering */
+        padding: 0.55rem 1rem;
+        font-size: 0.85rem;
+    }
+    .btn-back:hover {
+        transform: translateX(-3px); /* simple hover motion without Y shift */
+    }
+}
+
 /* MODERN CHAT INPUT OVERRIDE - Must be at the end - Updated: 2024 */
 .modern-chat {
     display: flex !important;
