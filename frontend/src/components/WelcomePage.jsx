@@ -32,8 +32,8 @@ export default function WelcomePage({ onStart }) {
         <image href="/mafialogo.png" x="0" y="0" width="160" height="160" filter="url(#refGlow)" />
         <image href="/mafialogo.png" x="0" y="0" width="160" height="160" />
       </svg>
-      <h1 className="welcome-title">Mafia Game</h1>
-      <p className="welcome-sub">Welcome to the Mafia lobby — gather your friends and prepare to deceive.</p>
+    <h1 className="welcome-title metallic-gradient shine-animated">Mafia Game</h1>
+  <p className="welcome-sub metallic-gradient shine-animated">A thrilling game of deception and strategy</p>
       <button className="welcome-start" onClick={onStart}>Start Game</button>
     </div>
   );
