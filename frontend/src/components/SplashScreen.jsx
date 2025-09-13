@@ -16,33 +16,37 @@ export default function SplashScreen({ onFinish }) {
       <div className="splash-logo-center">
         <svg width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <defs>
-            <filter id="innerGlow" x="-20%" y="-20%" width="140%" height="140%">
+            {/* reference-style glow: outer halo (dilate->blur->color) + subtle inner tint */}
+            <filter id="refGlow" x="-60%" y="-60%" width="220%" height="220%">
+              {/* load the logo raster */}
               <feImage xlinkHref="/mafialogo.png" result="logo" x="0" y="0" width="160" height="160" />
-              {/* get alpha for clipping */}
+              {/* extract alpha */}
               <feColorMatrix in="logo" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="alpha" />
-              {/* blur the RGB to create a soft source */}
-              <feGaussianBlur in="logo" stdDeviation="8" result="soft" />
-              {/* keep only the blurred pixels inside the shape */}
-              <feComposite in="soft" in2="alpha" operator="in" result="softInside" />
-              {/* color that soft interior */}
-              <feFlood floodColor="#ff3c3c" floodOpacity="0.7" result="red" />
-              <feComposite in="red" in2="softInside" operator="in" result="coloredSoft" />
-              {/* blend the colored soft layer with the original logo so the glow shows through dark areas */}
-              <feBlend in="coloredSoft" in2="logo" mode="screen" result="blended" />
+
+              {/* outer halo: dilate alpha to make a ring, blur it heavily, then color */}
+              <feMorphology in="alpha" operator="dilate" radius="6" result="dilated" />
+              <feComposite in="dilated" in2="alpha" operator="out" result="ring" />
+              <feGaussianBlur in="ring" stdDeviation="22" result="haloBlur" />
+              <feFlood floodColor="#ff0000" floodOpacity="0.8" result="haloColor" />
+              <feComposite in="haloColor" in2="haloBlur" operator="in" result="halo" />
+
+              {/* subtle inner tint (soft red inside the silhouette) */}
+              <feGaussianBlur in="logo" stdDeviation="6" result="innerSoft" />
+              <feComposite in="innerSoft" in2="alpha" operator="in" result="innerInside" />
+              <feFlood floodColor="#ff2a2a" floodOpacity="0.45" result="innerColor" />
+              <feComposite in="innerColor" in2="innerInside" operator="in" result="innerTint" />
+
+              {/* combine halo + inner tint + original as the filtered result (we'll render an unfiltered copy above) */}
               <feMerge>
-                <feMergeNode in="blended" />
+                <feMergeNode in="halo" />
+                <feMergeNode in="innerTint" />
+                <feMergeNode in="logo" />
               </feMerge>
             </filter>
-            {/* low, blurred base glow under the logo */}
-            <filter id="baseBlur" x="-50%" y="-50%" width="200%" height="200%">
-              <feGaussianBlur in="SourceGraphic" stdDeviation="14" result="g" />
-            </filter>
           </defs>
-          {/* soft red ground beneath the logo */}
-          <ellipse cx="80" cy="118" rx="48" ry="14" fill="#ff3c3c" opacity="0.55" filter="url(#baseBlur)" />
-          {/* filtered copy (provides glow behind) */}
-          <image href="/mafialogo.png" x="0" y="0" width="160" height="160" filter="url(#innerGlow)" opacity="0.95" />
-          {/* unfiltered copy on top so the logo is fully visible */}
+          {/* filtered copy (glow source) underneath */}
+          <image href="/mafialogo.png" x="0" y="0" width="160" height="160" filter="url(#refGlow)" />
+          {/* unfiltered copy on top so the logo remains crisp */}
           <image href="/mafialogo.png" x="0" y="0" width="160" height="160" />
         </svg>
       </div>
