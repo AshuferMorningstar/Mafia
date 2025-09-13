@@ -511,95 +511,10 @@
             </div>
         </div>
 
-        <!-- Game Screen -->
+        <!-- Game Screen: blank for redesign -->
         <div id="game-screen" class="game-screen">
-            <div class="game-info">
-                <div class="game-header">
-                    <img src="mafialogo.png" alt="Mafia Game Logo" class="game-screen-logo">
-                    <div class="phase-indicator" id="phase-indicator">
-                        🌙 Night Phase
-                    </div>
-                </div>
-                <p><strong>Your Role:</strong> <span id="your-role" class="role-badge">Unknown</span></p>
-                <div id="role-description"></div>
-            </div>
-
-            <div class="grid">
-                <div class="players-list">
-                    <h3>👥 Alive Players (<span id="alive-count">0</span>)</h3>
-                    <div id="alive-players-container"></div>
-                </div>
-
-                <div class="players-list">
-                    <h3>💀 Eliminated Players</h3>
-                    <div id="dead-players-container"></div>
-                </div>
-            </div>
-
-            <!-- Role Summary -->
-            <div class="role-summary" id="role-summary">
-                <div class="role-summary-header" onclick="toggleRoleSummary()">
-                    <h3>🎭 Role Information</h3>
-                    <span class="toggle-icon" id="role-summary-toggle">▼</span>
-                </div>
-                <div class="role-info-grid" id="role-info-content">
-                    <div class="role-info-item">
-                        <span class="role-badge role-civilian">👤 Civilian</span>
-                        <p>Find and eliminate killers during voting</p>
-                    </div>
-                    <div class="role-info-item">
-                        <span class="role-badge role-killer">🔪 Killer</span>
-                        <p>Eliminate players at night, avoid detection</p>
-                    </div>
-                    <div class="role-info-item">
-                        <span class="role-badge role-doctor">🩺 Doctor</span>
-                        <p>Save one player from elimination each night</p>
-                    </div>
-                    <div class="role-info-item">
-                        <span class="role-badge role-detective">🔍 Detective</span>
-                        <p>Investigate players to learn if they're killers</p>
-                    </div>
-                </div>
-            </div>
-
-            <div id="night-actions" class="hidden">
-                <h3>🌙 Night Actions</h3>
-                <div id="night-targets"></div>
-            </div>
-
-            <div id="day-voting" class="hidden">
-                <h3>🗳️ Day Voting</h3>
-                <p>Choose who to eliminate:</p>
-                <div id="voting-targets"></div>
-            </div>
-
-            <div id="speaker-controls" class="hidden">
-                <h3>🎙️ Speaker Controls</h3>
-                <div class="action-buttons">
-                    <button class="btn" id="process-night-btn" onclick="processNight()" disabled>Process Night</button>
-                    <button class="btn" id="start-voting-btn" onclick="startVoting()" disabled>Start Voting</button>
-                    <button class="btn" id="process-votes-btn" onclick="processVotes()" disabled>Process Votes</button>
-                </div>
-            </div>
-
-            <div class="messages" id="game-messages"></div>
-
-            <!-- Chat System -->
-            <div class="chat-container" id="chat-container">
-                <div class="chat-header">
-                    <h3>💬 Game Chat</h3>
-                    <span id="chat-status">Online</span>
-                </div>
-                <div class="chat-messages" id="chat-messages"></div>
-                <div class="chat-input-container modern-chat" id="chat-input-container">
-                    <input type="text" id="chat-input" placeholder="Type a message..." maxlength="500">
-                    <button class="btn btn-secondary chat-send-btn" onclick="sendChatMessage()">➤</button>
-                </div>
-            </div>
-
-            <div class="action-buttons">
-                <button class="btn btn-danger" onclick="leaveGame()">🚪 Leave Game</button>
-            </div>
+            <!-- Blank container for your new game-room UI. Remove this comment and build inside #game-room-main -->
+            <div id="game-room-main" style="min-height:60vh; padding:2rem;"> </div>
         </div>
 
         <!-- Game Over Screen -->
