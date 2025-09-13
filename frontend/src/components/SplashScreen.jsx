@@ -3,7 +3,11 @@ import '../styles.css';
 
 export default function SplashScreen({ onFinish }) {
   useEffect(() => {
-    const timer = setTimeout(onFinish, 2000);
+    // Animation length is 2000ms; trigger the app transition a bit earlier
+    // (while the logo is zooming out) so WelcomePage appears during the motion.
+  const SPLASH_TOTAL = 3200; // ms (matches CSS animation duration)
+  const TRIGGER_AT = Math.round(SPLASH_TOTAL * 0.45); // 45% through animation (a bit later)
+    const timer = setTimeout(onFinish, TRIGGER_AT);
     return () => clearTimeout(timer);
   }, [onFinish]);
 

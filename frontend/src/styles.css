@@ -26,12 +26,12 @@ body,html,#root{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto
   height: 160px;
   pointer-events: none;
   z-index: 0; /* behind the image which will be z-index:1 */
-  animation: glowZoom 2000ms cubic-bezier(.2,.9,.2,1) both;
+  animation: glowZoom 3200ms cubic-bezier(.2,.9,.2,1) both;
 }
 /* ensure the image sits above the glow */
-.splash-logo{position:relative;z-index:1; animation: zoomInOut 2000ms cubic-bezier(.2,.9,.2,1) both}
-.splash-title{font-family:'Cinzel Decorative',serif;font-size:2.6rem;margin:0 0 6px; transform-origin:50% 50%; animation: zoomInOut 2000ms cubic-bezier(.2,.9,.2,1) both; animation-delay: 120ms}
-.splash-sub{color:var(--muted);margin:0; transform-origin:50% 50%; animation: zoomInOut 2000ms cubic-bezier(.2,.9,.2,1) both; animation-delay: 200ms}
+.splash-logo{position:relative;z-index:1; animation: zoomInOut 3200ms cubic-bezier(.2,.9,.2,1) both}
+.splash-title{font-family:'Cinzel Decorative',serif;font-size:2.6rem;margin:0 0 6px; transform-origin:50% 50%; animation: zoomInOut 3200ms cubic-bezier(.2,.9,.2,1) both; animation-delay: 120ms}
+.splash-sub{color:var(--muted);margin:0; transform-origin:50% 50%; animation: zoomInOut 3200ms cubic-bezier(.2,.9,.2,1) both; animation-delay: 200ms}
 
 @keyframes zoomInOut {
   0% { transform: scale(0.86) }
