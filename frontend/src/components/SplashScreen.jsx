@@ -17,17 +17,17 @@ export default function SplashScreen({ onFinish }) {
         <svg width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <defs>
             {/* reference-style glow: outer halo (dilate->blur->color) + subtle inner tint */}
-            <filter id="refGlow" x="-60%" y="-60%" width="220%" height="220%">
+            <filter id="refGlow" x="-80%" y="-80%" width="260%" height="260%">
               {/* load the logo raster */}
               <feImage xlinkHref="/mafialogo.png" result="logo" x="0" y="0" width="160" height="160" />
               {/* extract alpha */}
               <feColorMatrix in="logo" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="alpha" />
 
               {/* outer halo: dilate alpha to make a ring, blur it heavily, then color */}
-              <feMorphology in="alpha" operator="dilate" radius="6" result="dilated" />
+              <feMorphology in="alpha" operator="dilate" radius="8" result="dilated" />
               <feComposite in="dilated" in2="alpha" operator="out" result="ring" />
-              <feGaussianBlur in="ring" stdDeviation="22" result="haloBlur" />
-              <feFlood floodColor="#ff0000" floodOpacity="0.8" result="haloColor" />
+              <feGaussianBlur in="ring" stdDeviation="36" result="haloBlur" />
+              <feFlood floodColor="#ff0000" floodOpacity="0.55" result="haloColor" />
               <feComposite in="haloColor" in2="haloBlur" operator="in" result="halo" />
 
               {/* subtle inner tint (soft red inside the silhouette) */}
@@ -42,6 +42,8 @@ export default function SplashScreen({ onFinish }) {
                 <feMergeNode in="innerTint" />
                 <feMergeNode in="logo" />
               </feMerge>
+              {/* final smoothing so the filtered output's edges blend into page background */}
+              <feGaussianBlur stdDeviation="6" result="smoothed" />
             </filter>
           </defs>
           {/* filtered copy (glow source) underneath */}
