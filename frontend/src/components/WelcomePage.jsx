@@ -1,7 +1,7 @@
 import React from 'react';
 import '../styles.css';
 
-export default function WelcomePage({ onStart }) {
+export default function WelcomePage({ onStart, onCreate, onJoin }) {
   return (
     <div className="welcome-root">
       <svg width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -34,7 +34,10 @@ export default function WelcomePage({ onStart }) {
       </svg>
     <h1 className="welcome-title metallic-gradient shine-animated">Mafia Game</h1>
   <p className="welcome-sub metallic-gradient shine-animated">A thrilling game of deception and strategy</p>
-      <button className="welcome-start" onClick={onStart}>Start Game</button>
+      <div className="welcome-actions">
+        <button className="welcome-start" onClick={onCreate || onStart}>Create a Room</button>
+        <button className="welcome-join" onClick={onJoin || onStart}>Join Game</button>
+      </div>
     </div>
   );
 }

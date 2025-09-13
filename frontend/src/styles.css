@@ -174,4 +174,37 @@ body,html,#root{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto
     animation: sheenMove 2.2s linear infinite;
   }
 }
-.welcome-start{padding:10px 22px;background:linear-gradient(90deg,var(--accent),#1976d2);color:white;border:none;border-radius:20px;font-weight:700;cursor:pointer}
+.welcome-start{
+  padding:14px 26px;
+  font-size:1.05rem;
+  width:100%;
+  box-sizing:border-box;
+  background: linear-gradient(90deg, #efe6d6 0%, #f6d27a 45%, #b9852b 100%); /* beige -> gold -> bronze */
+  color: #2b1f12; /* dark text for readable contrast on gold */
+  border: none;
+  border-radius:20px;
+  font-weight:700;
+  cursor:pointer;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+  transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease;
+}
+
+.welcome-actions{display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;width:100%;max-width:300px}
+.welcome-join{
+  padding:14px 26px;
+  font-size:1.05rem;
+  width:100%;
+  box-sizing:border-box;
+  background: linear-gradient(90deg, #f6ecd8 0%, #f4d57e 45%, #c7983a 100%); /* slightly lighter variant */
+  color: #2b1f12;
+  border: none;
+  border-radius:20px;
+  font-weight:700;
+  cursor:pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+  transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease;
+}
+
+.welcome-start:hover, .welcome-join:hover{transform: translateY(-3px);filter:brightness(1.03)}
+.welcome-start:active, .welcome-join:active{transform: translateY(-1px) scale(0.995)}
+.welcome-start:focus, .welcome-join:focus{outline:3px solid rgba(246,210,122,0.25);outline-offset:4px}
