@@ -18,19 +18,32 @@ export default function SplashScreen({ onFinish }) {
           <defs>
             <filter id="innerGlow" x="-20%" y="-20%" width="140%" height="140%">
               <feImage xlinkHref="/mafialogo.png" result="logo" x="0" y="0" width="160" height="160" />
+              {/* get alpha for clipping */}
               <feColorMatrix in="logo" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="alpha" />
-              <feMorphology in="alpha" operator="erode" radius="3" result="eroded" />
-              <feGaussianBlur in="eroded" stdDeviation="7" result="blurred" />
+              {/* blur the RGB to create a soft source */}
+              <feGaussianBlur in="logo" stdDeviation="8" result="soft" />
+              {/* keep only the blurred pixels inside the shape */}
+              <feComposite in="soft" in2="alpha" operator="in" result="softInside" />
+              {/* color that soft interior */}
               <feFlood floodColor="#ff3c3c" floodOpacity="0.7" result="red" />
-              <feComposite in="red" in2="blurred" operator="in" result="glow" />
-              <feComposite in="glow" in2="alpha" operator="in" result="maskedGlow" />
+              <feComposite in="red" in2="softInside" operator="in" result="coloredSoft" />
+              {/* blend the colored soft layer with the original logo so the glow shows through dark areas */}
+              <feBlend in="coloredSoft" in2="logo" mode="screen" result="blended" />
               <feMerge>
-                <feMergeNode in="maskedGlow" />
-                <feMergeNode in="logo" />
+                <feMergeNode in="blended" />
               </feMerge>
             </filter>
+            {/* low, blurred base glow under the logo */}
+            <filter id="baseBlur" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur in="SourceGraphic" stdDeviation="14" result="g" />
+            </filter>
           </defs>
-          <image href="/mafialogo.png" x="0" y="0" width="160" height="160" filter="url(#innerGlow)" />
+          {/* soft red ground beneath the logo */}
+          <ellipse cx="80" cy="118" rx="48" ry="14" fill="#ff3c3c" opacity="0.55" filter="url(#baseBlur)" />
+          {/* filtered copy (provides glow behind) */}
+          <image href="/mafialogo.png" x="0" y="0" width="160" height="160" filter="url(#innerGlow)" opacity="0.95" />
+          {/* unfiltered copy on top so the logo is fully visible */}
+          <image href="/mafialogo.png" x="0" y="0" width="160" height="160" />
         </svg>
       </div>
     </div>
