@@ -226,9 +226,13 @@ body,html,#root{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto
 .panel-logo{width:40px;height:40px;object-fit:contain}
 .panel-brand{display:flex;align-items:center;gap:10px;color:var(--text)}
 .panel-title{font-family:'Cinzel Decorative',serif;font-size:2.2rem;margin:0}
-.panel-nav{display:flex;flex-direction:column;width:100%}
-.panel-item{background:transparent;border:none;color:var(--muted);padding:10px 8px;text-align:left;cursor:pointer;border-radius:8px}
-.panel-item:hover{background:rgba(255,255,255,0.02);color:var(--text)}
+.panel-tabs{display:flex;flex-direction:column;gap:12px;width:100%;margin-top:8px}
+.panel-tab{display:flex;align-items:center;gap:12px;padding:12px 14px;font-size:1rem;width:100%;box-sizing:border-box;border-radius:16px;border:none;cursor:pointer;font-weight:700;background:linear-gradient(90deg, #efe6d6 0%, #f6d27a 45%, #b9852b 100%);color:#2b1f12;box-shadow:0 6px 18px rgba(0,0,0,0.18);transition:transform 140ms ease,box-shadow 140ms ease,filter 140ms ease}
+.panel-tab:hover{transform:translateY(-3px);filter:brightness(1.03)}
+.panel-tab:focus{outline:3px solid rgba(246,210,122,0.25);outline-offset:4px}
+.panel-tab.active{background:linear-gradient(90deg, #f6ecd8 0%, #f4d57e 45%, #c7983a 100%);color:#2b1f12}
+.tab-icon{display:inline-flex;align-items:center;justify-content:center;color:rgba(43,31,18,0.95);}
+.tab-label{flex:1;text-align:left}
 .panel-footer{margin-top:auto;color:rgba(255,255,255,0.35);font-size:0.85rem}
 
 .app-main{flex:1;display:flex;flex-direction:column;min-height:100vh}
@@ -246,6 +250,10 @@ body,html,#root{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto
 @media (prefers-reduced-motion: no-preference) {
   .dash-menu.shine-animated .bar::before{animation: sheenMove 2.2s linear infinite}
 }
+
+/* Popover shown when sandwich menu is toggled */
+.menu-popover{position:absolute;right:16px;top:56px;background:var(--panel);color:var(--text);padding:10px;border-radius:10px;box-shadow:0 8px 20px rgba(0,0,0,0.36);z-index:50;min-width:220px}
+.menu-popover .panel-tab{display:flex;padding:10px 12px;border-radius:12px;width:100%;margin:8px 0}
 
 /* responsive: hide side panel on small screens and show top dashboard */
 @media (max-width: 800px){
