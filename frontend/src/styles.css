@@ -130,6 +130,13 @@ body,html,#root{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto
 .welcome-title{font-family:'Cinzel Decorative',serif;font-size:2.1rem;margin:0 0 10px}
 .welcome-sub{color:var(--muted);margin:0 0 20px}
 
+/* Make the welcome subtitle use the same decorative font and metallic sheen as the title */
+.welcome-sub.metallic-gradient, .welcome-sub{
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 1.05rem;
+  line-height: 1.35;
+}
+
 /* Metallic / silver gradient for title and subtitle */
 .metallic-gradient {
   /* layered metallic gradient + sheen */
@@ -255,6 +262,19 @@ body,html,#root{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto
 .menu-popover{position:absolute;right:16px;top:56px;background:var(--panel);color:var(--text);padding:10px;border-radius:10px;box-shadow:0 8px 20px rgba(0,0,0,0.36);z-index:50;min-width:220px}
 .menu-popover .panel-tab{display:flex;padding:10px 12px;border-radius:12px;width:100%;margin:8px 0}
 
+/* Use a warm golden color for sliding panels and popovers for better legibility */
+.sliding-panel, .menu-popover {
+  --golden-text: #f6d27a; /* warm gold */
+  color: var(--golden-text);
+}
+.sliding-panel h3, .sliding-panel h4, .menu-popover h3, .menu-popover h4 {
+  color: var(--golden-text);
+  font-family: 'Cinzel Decorative', serif;
+}
+.sliding-panel p, .sliding-panel li, .menu-popover p, .menu-popover li {
+  color: var(--golden-text);
+}
+
 /* responsive: hide side panel on small screens and show top dashboard */
 @media (max-width: 800px){
   .side-panel{display:none}
@@ -263,3 +283,23 @@ body,html,#root{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto
   .welcome-root{background:transparent;padding:16px}
   .welcome-root .welcome-title{font-size:1.9rem}
 }
+
+/* Sliding right panel */
+.sliding-root{position:fixed;inset:0;pointer-events:none;z-index:120}
+.sliding-root.open{pointer-events:auto}
+.sliding-backdrop{position:absolute;inset:0;background:rgba(0,0,0,0.46);opacity:0;transition:opacity 240ms ease}
+.sliding-root.open .sliding-backdrop{opacity:1}
+.sliding-panel{position:absolute;right:0;top:0;height:100%;width:380px;max-width:92%;background:var(--panel);color:var(--text);transform:translateX(100%);transition:transform 300ms cubic-bezier(.22,.9,.3,1);box-shadow:-12px 0 36px rgba(0,0,0,0.48);display:flex;flex-direction:column}
+.sliding-root.open .sliding-panel{transform:translateX(0)}
+.sliding-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.04)}
+.sliding-title{margin:0;font-family:'Cinzel Decorative',serif;font-size:1.2rem}
+.sliding-close{background:transparent;border:none;color:var(--text);font-size:1.05rem;padding:6px 8px;border-radius:8px;cursor:pointer}
+.sliding-body{padding:16px;overflow:auto}
+.panel-placeholder{color:var(--muted);padding:8px 0}
+
+@media (max-width:640px){
+  .sliding-panel{width:320px}
+}
+
+/* prevent background scroll when sliding panel is open */
+.no-scroll{overflow:hidden}
