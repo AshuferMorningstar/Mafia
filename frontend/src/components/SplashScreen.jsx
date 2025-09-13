@@ -12,38 +12,27 @@ export default function SplashScreen({ onFinish }) {
   }, [onFinish]);
 
   return (
-    <div className="splash-root">
-      <div className="splash-logo-wrap">
-        {/* Inline SVG glow masked to the logo shape - placed behind the image */}
-        <svg className="splash-glow" width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <div className="splash-root splash-center">
+      <div className="splash-logo-center">
+        <svg width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <defs>
-            {/* Create a red glowing ring by dilating the logo, blurring it, and coloring the result */}
-            <filter id="ringFilter" x="-50%" y="-50%" width="200%" height="200%">
-              {/* source is the logo image drawn via feImage */}
-              <feImage xlinkHref="/mafialogo.png" result="logo" x="0" y="0" width="160" height="160" preserveAspectRatio="xMidYMid meet" />
-              {/* dilate to make the outline wider */}
-              <feMorphology in="logo" operator="dilate" radius="4" result="dilated" />
-              {/* blur to create soft glow */}
-              <feGaussianBlur in="dilated" stdDeviation="8" result="blurred" />
-              {/* subtract the original logo so we only have the outer ring */}
-              <feComposite in="blurred" in2="logo" operator="out" result="ringOnly" />
-              {/* color the ring red */}
-              <feFlood floodColor="#ff3c3c" floodOpacity="0.95" result="red" />
-              <feComposite in="red" in2="ringOnly" operator="in" result="coloredRing" />
+            <filter id="innerGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feImage xlinkHref="/mafialogo.png" result="logo" x="0" y="0" width="160" height="160" />
+              <feColorMatrix in="logo" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="alpha" />
+              <feMorphology in="alpha" operator="erode" radius="3" result="eroded" />
+              <feGaussianBlur in="eroded" stdDeviation="7" result="blurred" />
+              <feFlood floodColor="#ff3c3c" floodOpacity="0.7" result="red" />
+              <feComposite in="red" in2="blurred" operator="in" result="glow" />
+              <feComposite in="glow" in2="alpha" operator="in" result="maskedGlow" />
               <feMerge>
-                <feMergeNode in="coloredRing" />
+                <feMergeNode in="maskedGlow" />
+                <feMergeNode in="logo" />
               </feMerge>
             </filter>
           </defs>
-
-          {/* apply the filter to a rect the size of the viewbox so the ring is drawn */}
-          <rect width="160" height="160" fill="#000" filter="url(#ringFilter)" />
+          <image href="/mafialogo.png" x="0" y="0" width="160" height="160" filter="url(#innerGlow)" />
         </svg>
-
-        <img className="splash-logo" src="/mafialogo.png" alt="Mafia logo" />
       </div>
-      <h1 className="splash-title">Mafia Game</h1>
-      <p className="splash-sub">A thrilling game of deception and strategy</p>
     </div>
   );
 }
