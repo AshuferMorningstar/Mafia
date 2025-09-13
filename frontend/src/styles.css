@@ -1,0 +1,101 @@
+:root{
+  /* Royal blue theme */
+  --bg:#0b2545;    /* deep royal blue background */
+  --panel:#071833; /* darker blue panel for contrast */
+  --splash-bg: #2b0008; /* deep red for the splash screen background */
+  --muted:#9fb6d8;  /* muted light blue text */
+  --accent:#4fc3f7; /* bright accent cyan/blue */
+  --text:#e3f2ff;   /* near-white with blue tint */
+}
+
+body,html,#root{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial}
+
+.splash-root{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:var(--splash-bg);color:var(--text);transition:background 360ms ease;
+}
+/* Logo sizing: wrapper matches image so glow mask aligns exactly */
+.splash-logo{width:160px;height:160px;display:block;object-fit:contain}
+.splash-logo-wrap{position:relative;display:inline-block;margin-bottom:24px;width:160px;height:160px}
+
+.splash-glow{
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 160px;
+  height: 160px;
+  pointer-events: none;
+  z-index: 0; /* behind the image which will be z-index:1 */
+  animation: glowZoom 2000ms cubic-bezier(.2,.9,.2,1) both;
+}
+/* ensure the image sits above the glow */
+.splash-logo{position:relative;z-index:1; animation: zoomInOut 2000ms cubic-bezier(.2,.9,.2,1) both}
+.splash-title{font-family:'Cinzel Decorative',serif;font-size:2.6rem;margin:0 0 6px; transform-origin:50% 50%; animation: zoomInOut 2000ms cubic-bezier(.2,.9,.2,1) both; animation-delay: 120ms}
+.splash-sub{color:var(--muted);margin:0; transform-origin:50% 50%; animation: zoomInOut 2000ms cubic-bezier(.2,.9,.2,1) both; animation-delay: 200ms}
+
+@keyframes zoomInOut {
+  0% { transform: scale(0.86) }
+  45% { transform: scale(1.12) }
+  75% { transform: scale(0.98) }
+  100% { transform: scale(1) }
+}
+
+@keyframes glowZoom {
+  0% { transform: translate(-50%, -50%) scale(0.86); filter: blur(6px); opacity: 0.85 }
+  45% { transform: translate(-50%, -50%) scale(1.12); filter: blur(12px); opacity: 1 }
+  75% { transform: translate(-50%, -50%) scale(0.98); filter: blur(8px); opacity: 0.95 }
+  100% { transform: translate(-50%, -50%) scale(1); filter: blur(8px); opacity: 0.95 }
+}
+
+/* Enter animation: subtle scale + pulse on glow */
+.splash-enter .splash-logo-wrap {
+  animation: logoPop 420ms cubic-bezier(.2,.9,.2,1) forwards;
+}
+.splash-enter .splash-glow {
+  animation: glowPulse 1600ms ease-in-out infinite;
+  transform-origin: 50% 50%;
+}
+
+/* Exit animation: fade out and scale up slightly */
+.splash-exit {
+  animation: splashFadeOut 600ms ease-in forwards;
+}
+.logo-exit .splash-logo {
+  animation: logoExit 600ms ease-in forwards;
+}
+.logo-exit .splash-glow {
+  animation: glowFade 600ms ease-in forwards;
+}
+
+@keyframes logoPop {
+  0% { transform: translateY(0) scale(0.92); opacity: 0 }
+  60% { transform: translateY(-6px) scale(1.04); opacity: 1 }
+  100% { transform: translateY(0) scale(1); opacity: 1 }
+}
+
+@keyframes glowPulse {
+  0% { filter: blur(6px) saturate(1) opacity(0.9) }
+  50% { filter: blur(10px) saturate(1.2) opacity(1) }
+  100% { filter: blur(6px) saturate(1) opacity(0.9) }
+}
+
+@keyframes splashFadeOut {
+  from { opacity: 1 }
+  to { opacity: 0 }
+}
+
+@keyframes logoExit {
+  from { transform: scale(1) translateY(0); opacity: 1 }
+  to { transform: scale(1.08) translateY(-8px); opacity: 0 }
+}
+
+@keyframes glowFade {
+  from { opacity: 1; filter: blur(10px) }
+  to { opacity: 0; filter: blur(2px) }
+}
+
+.welcome-root{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:var(--splash-bg);color:var(--text);padding:24px}
+.welcome-logo{width:90px;margin-bottom:18px}
+.welcome-title{font-family:'Cinzel Decorative',serif;font-size:2.1rem;margin:0 0 10px}
+.welcome-sub{color:var(--muted);margin:0 0 20px}
+.welcome-start{padding:10px 22px;background:linear-gradient(90deg,var(--accent),#1976d2);color:white;border:none;border-radius:20px;font-weight:700;cursor:pointer}
