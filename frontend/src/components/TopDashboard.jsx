@@ -5,8 +5,7 @@ export default function TopDashboard() {
   return (
     <header className="top-dashboard">
       <div className="dash-left">
-        <img src="/mafialogo.png" alt="logo" className="dash-logo" />
-        <span className="dash-title">Mafia</span>
+        <span className="dash-title metallic-gradient shine-animated">Mafia</span>
       </div>
       <div className="dash-right">
         <button className="dash-btn">New Room</button>

@@ -5,8 +5,7 @@ export default function SidePanel() {
   return (
     <aside className="side-panel">
       <div className="panel-brand">
-        <img src="/mafialogo.png" alt="logo" className="panel-logo" />
-        <h2>Mafia</h2>
+        <h2 className="panel-title metallic-gradient shine-animated">Mafia</h2>
       </div>
       <nav className="panel-nav">
         <button className="panel-item">Home</button>
