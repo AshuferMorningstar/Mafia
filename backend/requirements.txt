@@ -1,3 +1,6 @@
 fastapi
 uvicorn
 python-dotenv
+python-socketio[asyncio_client]
+asgiref
+PyJWT
