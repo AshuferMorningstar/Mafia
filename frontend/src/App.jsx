@@ -88,98 +88,81 @@ export default function App() {
         </div>
       );
     }
+    if (tab === 'Game Tips') {
+      return (
+        <div>
+          <h4>1. Speaker (Moderator)</h4>
+          <ul>
+            <li>Stay neutral. Never give away hints with tone or expressions.</li>
+            <li>Keep the flow fast and smooth.</li>
+            <li>Announce results clearly and fairly.</li>
+            <li>If computer-controlled, follow the script exactly to avoid bias.</li>
+          </ul>
+
+          <h4>2. Killer (Mafia)</h4>
+          <ul>
+            <li>Coordinate silently with your fellow killers (if more than one).</li>
+            <li>Blend in during the day — talk and accuse like a civilian.</li>
+            <li>Avoid being too quiet or too aggressive, both raise suspicion.</li>
+            <li>Push suspicion onto others subtly instead of defending yourself too hard.</li>
+          </ul>
+
+          <h4>3. Doctor</h4>
+          <ul>
+            <li>Try to guess who the Mafia will target — usually active or trusted players.</li>
+            <li>Don’t always save the same person, you’ll become predictable.</li>
+            <li>If allowed, saving yourself occasionally is smart, but don’t overdo it.</li>
+            <li>Pay attention to who seems important in discussions, they may need saving.</li>
+          </ul>
+
+          <h4>4. Detective</h4>
+          <ul>
+            <li>Use your investigation wisely — you only get one shot (or limited uses if multiple detectives).</li>
+            <li>Don’t reveal your role immediately, it makes you an easy Mafia target.</li>
+            <li>If you discover a Killer, wait for the right moment to push suspicion without outing yourself too early.</li>
+            <li>Work with civilians subtly — give hints without directly saying you’re the Detective.</li>
+          </ul>
+
+          <h4>5. Civilian</h4>
+          <ul>
+            <li>Observe behavior — who’s quiet, who’s deflecting, who’s acting nervous.</li>
+            <li>Don’t follow the crowd blindly, Mafia often hide in majority votes.</li>
+            <li>Speak up and defend yourself when accused. Silence looks guilty.</li>
+            <li>Use voting power carefully — one wrong vote can cost the game.</li>
+          </ul>
+        </div>
+      );
+    }
     if (tab === 'Roles Info') {
       return (
         <div>
-          <h3>🎲 Roles</h3>
+          <h4>1. Speaker</h4>
+          <p>Moderates the game: controls phases, announces night/day results, and ensures fair play.</p>
+          <p>Can be a random player (who sits out) or the computer (automated moderator).</p>
+          <p>Does not have a role in the gameplay (no vote, no night actions).</p>
+
+          <h4>2. Killer</h4>
+          <p>Secretly selects one player to eliminate each night (may be a team if multiple killers).</p>
+          <p>Only Killers know each other.</p>
+          <p><strong>Win condition:</strong> Killers equal or outnumber remaining Civilians.</p>
+
+          <h4>3. Detective</h4>
+          <p>Has one investigation for the whole game.</p>
+          <p>When they investigate a player at night:</p>
           <ul>
-            <li><strong>Civilians 👤</strong> – Ordinary players. No powers. Must work together to find the killers.</li>
-            <li><strong>Killers 🔪</strong> – Secretly choose one player to eliminate each night. Win by outnumbering civilians.</li>
-            <li><strong>Doctor 🩺</strong> – Each night, chooses one player to “save.” If that player is targeted, they survive.</li>
-            <li><strong>Detective 🔍</strong> – Each night, investigates one player and silently learns if they are a killer.</li>
-            <li><strong>Speaker 🎙️</strong> – The moderator. Controls the flow, announces results, and ensures fairness. Never plays as a role.</li>
+            <li>If the target is a Killer, the Speaker publicly announces that player’s role the next morning.</li>
+            <li>If the target is not a Killer, only the Detective learns the truth (no public announcement).</li>
           </ul>
+          <p>After using the power, the Detective becomes a normal Civilian.</p>
 
-          <h3>⚙️ Setup</h3>
-          <ol>
-            <li>Gather at least 6 players + 1 Speaker.</li>
-            <li>Prepare role cards/slips (Civilians, Killers, Doctor, Detective). Shuffle and deal secretly. Players keep their role hidden. Only killers know each other.</li>
-            <li>The Speaker explains the rules and starts the game.</li>
-          </ol>
+          <h4>4. Doctor</h4>
+          <p>Each night chooses one player to protect (can choose self).</p>
+          <p>If Killers target the protected player, the Speaker announces: “That player was attacked but saved by the Doctor.”</p>
+          <p>Cannot protect the same player two nights in a row.</p>
 
-          <h3>🌙 Night Phase</h3>
-          <ol>
-            <li>Everyone closes their eyes.</li>
-            <li>Speaker: “Killers, open your eyes.” Killers silently choose one target. Speaker confirms and says: “Killers, close your eyes.”</li>
-            <li>Speaker: “Doctor, open your eyes.” Doctor points to one player to save. Speaker confirms and says: “Doctor, close your eyes.”</li>
-            <li>Speaker: “Detective, open your eyes.” Detective points to one player. Speaker silently shows a 👍 if they are a killer, 👎 if not. Speaker says: “Detective, close your eyes.”</li>
-            <li>Night ends.</li>
-          </ol>
-
-          <h3>☀️ Day Phase</h3>
-          <ol>
-            <li>Everyone opens their eyes.</li>
-            <li>Speaker announces results: if doctor saved the target → “Nobody was eliminated last night.” If not saved → “Last night, [Name] was eliminated.”</li>
-            <li>Discussion: All surviving players argue, accuse, and defend themselves.</li>
-            <li>Voting: Speaker says: “On the count of three, point to the person you want to eliminate.” Majority vote decides. Eliminated player reveals their role and leaves the game.</li>
-          </ol>
-
-          <h3>🏆 Win Conditions</h3>
-          <ul>
-            <li><strong>Civilians win</strong> → All killers are eliminated.</li>
-            <li><strong>Killers win</strong> → Killers equal or outnumber civilians.</li>
-          </ul>
-
-          <h3>⚖️ Role Balance</h3>
-          <ul>
-            <li>6–7 players → 1 Killer, 1 Doctor, rest Civilians (no Detective).</li>
-            <li>8–10 players → 2 Killers, 1 Doctor, 1 Detective, rest Civilians.</li>
-            <li>11–15 players → 3 Killers, 1 Doctor, 1 Detective, rest Civilians.</li>
-          </ul>
-
-          <h3>🎙️ Speaker Script (Full Cycle)</h3>
-          <p>Use this word-for-word if you want to keep it smooth.</p>
-          <pre style={{whiteSpace: 'pre-wrap'}}>
-Game Start
-
-“Everyone, close your eyes.”
-
-“Killers, open your eyes and look around to recognize each other. Close your eyes again.”
-
-“The game begins…”
-
-Night Phase
-
-“Everyone, close your eyes.”
-
-“Killers, open your eyes and choose one person to eliminate.”
-
-(Confirm silently) “Killers, close your eyes.”
-
-“Doctor, open your eyes and choose one person to save.”
-
-(Confirm silently) “Doctor, close your eyes.”
-
-“Detective, open your eyes and choose one person to investigate.”
-
-(Show thumbs up/down) “Detective, close your eyes.”
-
-“Everyone, wake up.”
-
-Day Phase
-
-(Announce result of night: saved or eliminated)
-
-“Discuss who you think the killer is. You have 5 minutes.”
-
-“It’s time to vote. On the count of three, point to the player you want to eliminate.”
-
-(Count votes, announce elimination)
-
-“The town has decided. [Name], you have been eliminated. Reveal your role.”
-
-Repeat until win condition is met.
-          </pre>
+          <h4>5. Civilian</h4>
+          <p>No special powers.</p>
+          <p>Main tools: discussion, observation, and voting to find and eliminate Killers.</p>
         </div>
       );
     }
