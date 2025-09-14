@@ -1,5 +1,68 @@
+.lobby-card-body.chat-body-flex {
+  margin-top: 0 !important;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
 
-@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&family=IM+Fell+English+SC&display=swap');
+.chat-body-flex {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  padding-bottom: 0 !important;
+}
+
+.chat-input-row.chat-input-bottom {
+  margin-top: auto;
+  margin-bottom: 0;
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.chat-body-flex > .chat-input-row.chat-input-bottom {
+  margin-top: auto;
+  }
+.lobby-card-body.chat-body-flex {
+  padding-bottom: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+/* Remove only the bottom padding from the card when chat is active */
+.lobby-card:has(.chat-body-flex) {
+  padding-bottom: 0 !important;
+  padding-left: clamp(8px, 3vw, 18px);
+  padding-right: clamp(8px, 3vw, 18px);
+  padding-top: clamp(8px, 3vw, 18px);
+}
+.lobby-card {
+  position: relative; /* ensure absolutely positioned children align to card */
+}
+
+/* place the chat input visually at the bottom of the card while keeping card rounded corners */
+.lobby-card > .chat-input-row.chat-input-bottom {
+  position: relative; /* sibling so flows after card body */
+  box-sizing: border-box;
+  padding: 12px clamp(10px, 3vw, 18px);
+  background: linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0.03));
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+  margin-top: 6px;
+  gap: 10px;
+}
+
+/* allow the inner inputs to expand and maintain nice rounded buttons */
+.lobby-card > .chat-input-row.chat-input-bottom .chat-input{border-radius:8px}
+.lobby-card > .chat-input-row.chat-input-bottom .chat-send-btn{border-radius:8px}
+.chat-input-row.chat-input-bottom {
+  border-radius: 0 !important;
+}
+/* Remove bottom padding in chat mode for edge-to-edge input */
 
 .splash-center {
   display: flex;
@@ -655,6 +718,14 @@ html, body, #root {
     max-height: 28vh;
     min-height: 80px;
     overflow:auto;
+  }
+  /* On mobile, bring the chat-input row down and match card width; remove extra margin that caused gap */
+  .lobby-card > .chat-input-row.chat-input-bottom {
+    margin-top: 0;
+    padding: 10px 12px;
+    background: transparent;
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
   }
   .lobby-players-list{
     max-height: 22vh;
