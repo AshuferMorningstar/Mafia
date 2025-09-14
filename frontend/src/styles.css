@@ -342,6 +342,14 @@ body,html,#root{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto
 .sliding-title{margin:0;font-family:'Cinzel Decorative',serif;font-size:1.2rem}
 .sliding-close{background:transparent;border:none;color:var(--text);font-size:1.05rem;padding:6px 8px;border-radius:8px;cursor:pointer}
 .sliding-body{padding:16px;overflow:auto}
+
+/* Hide native scrollbars but keep scrolling functional */
+.sliding-body {
+  /* for WebKit-based browsers */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE 10+ */
+}
+.sliding-body::-webkit-scrollbar { display: none; }
 .panel-placeholder{color:var(--muted);padding:8px 0}
 
 @media (max-width:640px){
