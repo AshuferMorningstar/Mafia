@@ -721,8 +721,8 @@ html, body, #root {
   }
   /* On mobile, bring the chat-input row down and match card width; remove extra margin that caused gap */
   .lobby-card > .chat-input-row.chat-input-bottom {
-    margin-top: 0;
-    padding: 10px 12px;
+    margin-top: 12px; /* move input a bit lower on small screens */
+    padding: 12px 14px;
     background: transparent;
     border-bottom-left-radius: 10px;
     border-bottom-right-radius: 10px;
