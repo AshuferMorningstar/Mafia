@@ -564,3 +564,43 @@ html, body, #root {
   .external-actions{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between}
   .external-actions .lobby-action{min-width:140px}
 }
+
+/* Mobile-specific enhancements: keep buttons visible above mobile chrome, respect safe-area insets,
+   and make lobby card and body scrollable within the viewport. */
+@media (max-width: 800px) {
+  /* Make action buttons sticky at the bottom so they remain visible above browser UI */
+  .external-actions{
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(env(safe-area-inset-bottom, 12px) + 10px);
+    z-index: 140;
+    display:flex;
+    gap:12px;
+    justify-content:center;
+    align-items:center;
+    background: linear-gradient(180deg, rgba(0,0,0,0.18), rgba(0,0,0,0.12));
+    padding:10px;
+    border-radius:12px;
+    box-shadow: 0 -10px 30px rgba(0,0,0,0.45);
+  }
+
+  /* Slightly smaller buttons on very narrow screens but keep them side-by-side */
+  .external-actions .lobby-action{min-width:44%;flex:1;padding:12px 10px}
+
+  /* Ensure the lobby card doesn't get covered by the sticky actions */
+  .lobby-card{margin-bottom: calc(env(safe-area-inset-bottom, 12px) + 110px); max-height: calc(100vh - 140px)}
+
+  /* Limit the card body to allow internal scrolling without overflowing the viewport */
+  .lobby-card-body{max-height: calc(100vh - 260px); overflow:auto}
+
+  /* Add bottom padding for centered/welcome pages so forms and content stay above the actions */
+  .lobby-centered{padding-bottom: calc(env(safe-area-inset-bottom, 12px) + 130px)}
+  .welcome-root{padding-bottom: calc(env(safe-area-inset-bottom, 12px) + 90px)}
+
+  /* Make sure inputs and form sections are reachable and content scrolls inside their containers */
+  .form-width{padding-bottom:8px}
+
+  /* Reduce large hero text on very small phones to preserve space */
+  .lobby-hero-title{font-size:1.9rem}
+}
