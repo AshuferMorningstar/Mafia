@@ -256,7 +256,23 @@ body,html,#root{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto
 .dash-menu .bar{display:block;width:18px;height:3px;border-radius:2px;position:relative;overflow:hidden;background:transparent}
 .dash-menu .bar::before{content:"";position:absolute;inset:0;background-image:var(--metal-base), var(--metal-sheen);background-size:100% 100%,40% 120%;background-position:0% 0%,-60% 0%;background-repeat:no-repeat;transform-origin:left center}
 .dash-menu:hover .bar::before{transform:translateX(1.5px)}
-.dash-menu:focus{outline:3px solid rgba(255,255,255,0.08);outline-offset:4px}
+/* Remove click/tap focus ring but preserve keyboard focus visibility */
+.dash-menu:focus:not(:focus-visible){
+  outline: none;
+}
+.dash-menu:focus-visible {
+  outline:3px solid rgba(255,255,255,0.08);
+  outline-offset:4px;
+}
+
+/* Remove tap highlight and active flash on click/touch for the sandwich menu */
+.dash-menu, .dash-menu .bar {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+.dash-menu:active { background: transparent; }
 
 @media (prefers-reduced-motion: no-preference) {
   .dash-menu.shine-animated .bar::before{animation: sheenMove 2.2s linear infinite}
