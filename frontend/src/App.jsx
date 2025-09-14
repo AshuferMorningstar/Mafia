@@ -3,6 +3,7 @@ import './styles.css';
 import SplashScreen from './components/SplashScreen';
 import WelcomePage from './components/WelcomePage';
 import CreateRoom from './components/CreateRoom';
+import JoinRoom from './components/JoinRoom';
 import SidePanel from './components/SidePanel';
 import TopDashboard from './components/TopDashboard';
 import SlidingPanel from './components/SlidingPanel';
@@ -204,10 +205,13 @@ export default function App() {
       <div className="app-main">
         <TopDashboard onTabSelect={handleTabSelect} activeTab={activeTab || 'How to Play'} />
         {page === 'home' && (
-          <WelcomePage onStart={() => alert('Start Game')} onCreate={() => setPage('create')} apiMessage={apiMessage} />
+          <WelcomePage onStart={() => alert('Start Game')} onCreate={() => setPage('create')} onJoin={() => setPage('join')} apiMessage={apiMessage} />
         )}
         {page === 'create' && (
           <CreateRoom onEnterLobby={() => alert('Entering lobby...')} onBack={() => setPage('home')} />
+        )}
+        {page === 'join' && (
+          <JoinRoom onJoinLobby={() => alert('Joining lobby...')} onBack={() => setPage('home')} />
         )}
       </div>
 
