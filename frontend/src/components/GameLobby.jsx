@@ -7,8 +7,8 @@ export default function GameLobby({ roomCode = '7XYRGF', players = ['Alice','Bob
   return (
     <div className="lobby-root lobby-centered">
       <header className="lobby-main-header">
-        <h1 className="lobby-hero-title">Mafia Game Lobby</h1>
-        <p className="lobby-hero-sub">A thrilling game of deception and strategy</p>
+        <h1 className="lobby-hero-title welcome-title metallic-gradient">Mafia Game Lobby</h1>
+        <p className="lobby-hero-sub welcome-sub metallic-gradient">A thrilling game of deception and strategy</p>
         <div className="lobby-roomcode">ROOM CODE: <span className="code-text">{roomCode}</span></div>
       </header>
 
