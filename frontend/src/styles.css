@@ -129,7 +129,7 @@ body,html,#root{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto
   to { opacity: 0; filter: blur(2px) }
 }
 
-.welcome-root{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:var(--splash-bg);color:var(--text);padding:24px}
+.welcome-root{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:var(--splash-bg);color:var(--text);padding:24px;position:relative}
 .welcome-logo{width:90px;margin-bottom:18px}
 .welcome-title{font-family:'Cinzel Decorative',serif;font-size:2.1rem;margin:0 0 10px}
 .welcome-sub{color:var(--muted);margin:0 0 20px}
@@ -395,6 +395,51 @@ body,html,#root{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto
 }
 .sliding-body::-webkit-scrollbar { display: none; }
 .panel-placeholder{color:var(--muted);padding:8px 0}
+
+/* utility: form width used in Create Room page */
+.form-width { max-width: 360px; width: 100%; }
+
+/* Ensure form controls use border-box so widths match visually */
+.form-width input, .form-width button { box-sizing: border-box; }
+
+/* Visible circular back button used on Create Room */
+.back-button {
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #f6d27a 0%, #c7983a 100%);
+  color: #2b1f12;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.28);
+  cursor: pointer;
+  font-size: 1.05rem;
+}
+.back-button:focus-visible{ outline: 3px solid rgba(246,210,122,0.24); outline-offset:3px }
+
+/* Keep the Enter button visually active even when disabled; still non-interactive */
+.welcome-start[disabled], .welcome-join[disabled] {
+  opacity: 1 !important; /* don't dim */
+  filter: none !important;
+  cursor: not-allowed;
+}
+.welcome-start[disabled]:hover, .welcome-join[disabled]:hover {
+  transform: none !important; /* no hover lift */
+}
+
+/* back button used on centered pages */
+.back-button{
+  position:absolute;left:18px;top:18px;display:inline-flex;align-items:center;justify-content:center;
+  width:44px;height:44px;border-radius:999px;border:none;cursor:pointer;
+  background: linear-gradient(90deg,#efe6d6 0%,#f6d27a 45%,#c7983a 100%);color:#2b1f12;font-weight:700;
+  box-shadow: 0 6px 14px rgba(0,0,0,0.28);
+}
+.back-button:focus-visible{outline:3px solid rgba(246,210,122,0.28);outline-offset:4px}
 
 @media (max-width:640px){
   .sliding-panel{width:320px}
