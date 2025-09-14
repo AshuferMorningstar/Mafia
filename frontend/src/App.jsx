@@ -7,6 +7,8 @@ import JoinRoom from './components/JoinRoom';
 import SidePanel from './components/SidePanel';
 import TopDashboard from './components/TopDashboard';
 import SlidingPanel from './components/SlidingPanel';
+import GameLobby from './components/GameLobby';
+import GamePage from './components/GamePage.jsx';
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -14,6 +16,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [page, setPage] = useState('home');
+  const [lobby, setLobby] = useState(null);
 
   useEffect(() => {
     fetch('http://127.0.0.1:5001/')
@@ -200,7 +203,7 @@ export default function App() {
   }
 
   return (
-    <div className="app-layout">
+    <div className={`app-layout page-${page}`}>
       <SidePanel onTabSelect={handleTabSelect} activeTab={activeTab || 'How to Play'} />
       <div className="app-main">
         <TopDashboard onTabSelect={handleTabSelect} activeTab={activeTab || 'How to Play'} />
@@ -208,10 +211,31 @@ export default function App() {
           <WelcomePage onStart={() => alert('Start Game')} onCreate={() => setPage('create')} onJoin={() => setPage('join')} apiMessage={apiMessage} />
         )}
         {page === 'create' && (
-          <CreateRoom onEnterLobby={() => alert('Entering lobby...')} onBack={() => setPage('home')} />
+          <CreateRoom onEnterLobby={(name) => {
+            const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+            setLobby({ roomCode: code, players: [name || 'Host'], isHost: true });
+            setPage('lobby');
+          }} onBack={() => setPage('home')} />
         )}
         {page === 'join' && (
-          <JoinRoom onJoinLobby={() => alert('Joining lobby...')} onBack={() => setPage('home')} />
+          <JoinRoom onJoinLobby={(payload) => {
+            const { name, code } = payload || {};
+            setLobby({ roomCode: code || '????', players: [name || 'Player'], isHost: false });
+            setPage('lobby');
+          }} onBack={() => setPage('home')} />
+        )}
+        {page === 'lobby' && lobby && (
+          <GameLobby
+            roomCode={lobby.roomCode}
+            players={lobby.players}
+            isHost={lobby.isHost}
+            onLeave={() => { setPage('home'); setLobby(null); }}
+            onStart={() => { setPage('game'); }}
+            onClose={() => { setPage('home'); setLobby(null); }}
+          />
+        )}
+        {page === 'game' && (
+          <GamePage roomCode={lobby?.roomCode} players={lobby?.players} onExit={() => { setPage('home'); setLobby(null); }} />
         )}
       </div>
 

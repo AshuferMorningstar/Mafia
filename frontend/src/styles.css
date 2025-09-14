@@ -381,6 +381,16 @@ html, body, #root {
   .welcome-root .welcome-title{font-size:1.9rem}
 }
 
+/* Hide the top dashboard on mobile specifically for the welcome/create/join and lobby pages
+   so the action buttons remain visible and are not pushed under the mobile browser chrome. */
+@media (max-width: 800px) {
+  .page-lobby .top-dashboard,
+  .page-create .top-dashboard,
+  .page-join .top-dashboard {
+    display: none !important;
+  }
+}
+
 /* Sliding right panel */
 .sliding-root{position:fixed;inset:0;pointer-events:none;z-index:120}
 .sliding-root.open{pointer-events:auto}
@@ -477,3 +487,80 @@ html, body, #root {
 
 /* prevent background scroll when sliding panel is open */
 .no-scroll{overflow:hidden}
+
+/* Compact game lobby header and room code layout */
+.lobby-root{display:flex;flex-direction:column;gap:12px;padding:18px 20px;box-sizing:border-box;flex:1;min-height:0;max-height:calc(100vh - 40px)}
+.lobby-header{display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:0;margin:0}
+.lobby-title{font-family:'Great Vibes', cursive;font-size:1.9rem;margin:0;color:var(--golden-deep)}
+.lobby-instruction{margin:0;color:var(--muted);font-size:0.95rem}
+.room-code-row{display:flex;align-items:center;gap:10px;margin-top:6px}
+.room-code-box{background:linear-gradient(90deg,#f6ecd8 0%,#f4d57e 45%,#c7983a 100%);color:#2b1f12;padding:8px 12px;border-radius:10px;font-weight:800;letter-spacing:2px}
+.room-code-box.big{font-size:1.15rem;padding:10px 14px}
+.room-code-actions{display:flex;gap:8px}
+.circle-icon{width:36px;height:36px;border-radius:999px;border:none;background:rgba(255,255,255,0.06);color:var(--text);display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.circle-icon:focus-visible{outline:3px solid rgba(246,210,122,0.22);outline-offset:3px}
+
+/* Lobby body and content scrolling */
+.lobby-body{display:flex;flex-direction:column;gap:12px;flex:1;min-height:0}
+.panel-tabs{display:flex;gap:8px}
+.tab{padding:8px 12px;border-radius:10px;border:none;background:transparent;color:var(--muted);cursor:pointer}
+.tab.active{background:linear-gradient(90deg,#efe6d6 0%,#f6d27a 45%,#b9852b 100%);color:#2b1f12}
+.panel-content{display:flex;flex-direction:column;gap:12px;flex:1;min-height:0;overflow:auto}
+.players-panel ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
+.chat-messages{flex:1;min-height:0;overflow:auto;padding:8px 4px}
+.chat-input-row{display:flex;gap:8px;padding:8px 0}
+
+.lobby-footer{display:flex;gap:10px;align-items:center;justify-content:flex-end;padding-top:8px}
+.lobby-footer.stacked{flex-direction:row}
+.start-game{background:linear-gradient(90deg,#4caf50 0%,#2e7d32 100%);color:white;border:none;padding:10px 14px;border-radius:10px;cursor:pointer}
+.leave-lobby{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted);padding:8px 12px;border-radius:10px;cursor:pointer}
+
+/* Empty lobby placeholder (when GameLobby is intentionally stripped) */
+.game-lobby-empty{flex:1;min-height:0}
+
+/* Styles for the recreated Mafia Game Lobby (centered hero + card) */
+.lobby-centered{display:flex;flex-direction:column;align-items:center;gap:22px;padding:36px 18px;box-sizing:border-box}
+.lobby-main-header{text-align:center;color:var(--text);max-width:820px}
+.lobby-hero-title{font-family:Inter, sans-serif;font-size:3.2rem;margin:0;color:#f3d7b0}
+.lobby-hero-sub{margin:8px 0 18px;color:var(--muted);font-size:1.1rem}
+.lobby-roomcode{font-weight:800;color:#f3d7b0;margin-bottom:6px}
+.lobby-roomcode .code-text{letter-spacing:2px}
+
+.lobby-card{width:min(820px,92%);background:rgba(0,0,0,0.06);border-radius:18px;padding:18px;box-sizing:border-box;box-shadow:0 12px 36px rgba(0,0,0,0.35);display:flex;flex-direction:column;min-height:520px}
+.lobby-card-top{padding:8px 8px 0}
+.lobby-tabs{display:flex;gap:18px}
+.lobby-tab{flex:1;padding:18px 12px;border-radius:12px;background:transparent;border:none;color:var(--muted);font-weight:700;cursor:pointer}
+.lobby-tab.active{background:rgba(255,255,255,0.03);color:#f3d7b0;border-bottom:3px solid rgba(255,255,255,0.07)}
+
+.lobby-card-body{background:rgba(0,0,0,0.03);border-radius:12px;margin-top:12px;padding:18px;flex:1;min-height:320px;overflow:auto}
+.lobby-players-list{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:18px}
+.lobby-player-item{padding:14px 12px;border-radius:10px;background:rgba(255,255,255,0.02);color:var(--text);font-size:1.05rem}
+.lobby-chat-placeholder{color:var(--muted)}
+
+/* external actions: placed below lobby card, matching card width */
+.external-actions{display:flex;gap:14px;margin-top:22px;width:100%;justify-content:center}
+.external-actions .lobby-action{flex:1;min-width:160px;padding:16px 18px;border-radius:12px;border:none;cursor:pointer;font-weight:800}
+.external-actions .lobby-action.start{background:linear-gradient(90deg,#f6d27a 0%,#c7983a 100%);color:#2b1f12}
+.external-actions .lobby-action.close{background:linear-gradient(90deg,#f6ecd8 0%,#f4d57e 45%,#c7983a 100%);color:#2b1f12}
+
+@media (max-width:600px){
+  .lobby-hero-title{font-size:2.2rem}
+  .lobby-card{padding:12px;border-radius:12px}
+  .lobby-tab{padding:12px}
+}
+
+/* Buttons container below the lobby card */
+.lobby-actions{width:100%;margin-top:18px}
+
+@media (min-width:900px){
+  .lobby-card{width:900px}
+  .external-actions{width:900px}
+  .external-actions{margin-top:28px}
+  .external-actions .lobby-action{padding:18px 20px}
+}
+
+@media (max-width:899px){
+  /* keep buttons side-by-side on narrow screens; allow wrapping if absolutely needed */
+  .external-actions{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between}
+  .external-actions .lobby-action{min-width:140px}
+}
