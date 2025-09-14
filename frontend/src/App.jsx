@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import './styles.css';
 import SplashScreen from './components/SplashScreen';
 import WelcomePage from './components/WelcomePage';
+import CreateRoom from './components/CreateRoom';
 import SidePanel from './components/SidePanel';
 import TopDashboard from './components/TopDashboard';
 import SlidingPanel from './components/SlidingPanel';
@@ -11,6 +12,7 @@ export default function App() {
   const [apiMessage, setApiMessage] = useState('');
   const [activeTab, setActiveTab] = useState(null);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [page, setPage] = useState('home');
 
   useEffect(() => {
     fetch('http://127.0.0.1:5001/')
@@ -201,7 +203,12 @@ export default function App() {
       <SidePanel onTabSelect={handleTabSelect} activeTab={activeTab || 'How to Play'} />
       <div className="app-main">
         <TopDashboard onTabSelect={handleTabSelect} activeTab={activeTab || 'How to Play'} />
-        <WelcomePage onStart={() => alert('Start Game')} apiMessage={apiMessage} />
+        {page === 'home' && (
+          <WelcomePage onStart={() => alert('Start Game')} onCreate={() => setPage('create')} apiMessage={apiMessage} />
+        )}
+        {page === 'create' && (
+          <CreateRoom onEnterLobby={() => alert('Entering lobby...')} onBack={() => setPage('home')} />
+        )}
       </div>
 
       <SlidingPanel open={panelOpen} title={activeTab || ''} onClose={closePanel}>
