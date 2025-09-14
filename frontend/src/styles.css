@@ -1,3 +1,6 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&family=IM+Fell+English+SC&display=swap');
+
 .splash-center {
   display: flex;
   align-items: center;
@@ -13,6 +16,7 @@
   width: 100%;
   height: 100%;
 }
+/* Old-ink / calligraphic fonts for sliding panels */
 :root{
   /* Unified royal red theme */
   --bg: #2b0008;      /* primary red canvas (same as splash) */
@@ -264,16 +268,59 @@ body,html,#root{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto
 
 /* Use a warm golden color for sliding panels and popovers for better legibility */
 .sliding-panel, .menu-popover {
-  --golden-text: #f6d27a; /* warm gold */
-  color: var(--golden-text);
+  --golden-light: #ffebb6; /* brightest highlight */
+  --golden-mid:  #f6d27a; /* mid tone */
+  --golden-deep: #b07a2a; /* darker base for depth */
+  color: var(--golden-mid);
+  /* use calligraphic font for all panel text to emulate golden ink handwriting */
+   font-family: 'IM Fell English SC', serif;
 }
-.sliding-panel h3, .sliding-panel h4, .menu-popover h3, .menu-popover h4 {
-  color: var(--golden-text);
-  font-family: 'Cinzel Decorative', serif;
+
+/* Gold text gradient for headings and emphasized text */
+/* Apply same gold gradient to all text inside the panels (brighter highlight -> deeper base) */
+ .sliding-panel h1, .sliding-panel h2, .sliding-panel h3, .sliding-panel h4, .sliding-panel h5, .sliding-panel h6,
+ .menu-popover h1, .menu-popover h2, .menu-popover h3, .menu-popover h4, .menu-popover h5, .menu-popover h6 {
+   font-family: 'Great Vibes', cursive;
+   background-image: linear-gradient(180deg, var(--golden-light) 0%, var(--golden-mid) 55%, var(--golden-deep) 100%);
+   -webkit-background-clip: text;
+   background-clip: text;
+   color: transparent;
+   text-shadow: 0 1px 0 rgba(0,0,0,0.12);
+ }
+
+/* Make body text slightly larger for readability while keeping same gold gradient */
+ .sliding-panel p, .sliding-panel li, .menu-popover p, .menu-popover li, .sliding-panel span, .menu-popover span, .sliding-panel a, .menu-popover a, .sliding-panel blockquote, .menu-popover blockquote {
+   font-family: 'IM Fell English SC', serif;
+   font-size: 1.12rem;
+   line-height: 1.55;
+   color: var(--golden-mid);
+   text-shadow: 0 0 0 rgba(0,0,0,0);
+ }
+
+/* Calligraphic heading style for a handwritten ink look */
+.sliding-panel h3, .menu-popover h3 { font-family: 'Great Vibes', cursive; font-size: 2.2rem; margin: 0 0 8px }
+.sliding-panel h4, .menu-popover h4 { font-family: 'Great Vibes', cursive; font-size: 1.45rem; margin: 8px 0 }
+
+/* Parchment background: warm paper base + subtle SVG grain overlay */
+.sliding-panel {
+  background: linear-gradient(180deg, #efe3c9 0%, #f6ecd8 100%);
+  background-blend-mode: multiply;
+  padding: 18px;
+  border-left: 6px solid rgba(176,122,42,0.12);
+  border-radius: 8px 0 0 8px;
+  box-shadow: -8px 12px 36px rgba(12,8,6,0.48);
 }
-.sliding-panel p, .sliding-panel li, .menu-popover p, .menu-popover li {
-  color: var(--golden-text);
+.sliding-panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 200 200'><filter id='f'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%' height='100%' filter='url(%23f)' opacity='0.06' fill='%23a47f58'/></svg>");
+  mix-blend-mode: multiply;
 }
+
+/* Slight ink-like edge on popover */
+.menu-popover { background: linear-gradient(180deg, #efe3c9 0%, #f6ecd8 100%); border-radius: 10px; }
 
 /* responsive: hide side panel on small screens and show top dashboard */
 @media (max-width: 800px){
