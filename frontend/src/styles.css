@@ -432,6 +432,30 @@ body,html,#root{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto
   transform: none !important; /* no hover lift */
 }
 
+/* Remove visual focus ring when clicking/tapping the player name input, but
+   preserve keyboard focus outlines using :focus-visible */
+#player-name:focus:not(:focus-visible), .form-width input:focus:not(:focus-visible) {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Additional stronger reset for browsers that may still show an inner ring.
+   This disables appearance and any UA focus styling; then we re-enable
+   a keyboard-visible outline only when the browser supports :focus-visible. */
+#player-name, .form-width input {
+  -webkit-appearance: none;
+  appearance: none;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+@supports (selector(:focus-visible)) {
+  #player-name:focus-visible, .form-width input:focus-visible {
+    outline: 3px solid rgba(246,210,122,0.28);
+    outline-offset: 4px;
+  }
+}
+
 /* back button used on centered pages */
 .back-button{
   position:absolute;left:18px;top:18px;display:inline-flex;align-items:center;justify-content:center;
