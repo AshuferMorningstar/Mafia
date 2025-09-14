@@ -635,7 +635,10 @@ html, body, #root {
     height: 92vw;
     max-height: 92vw;
     min-height: 200px;
-    box-shadow: 0 8px 32px 0 rgba(0,0,0,0.55), 0 1.5px 8px 0 rgba(246,210,122,0.10);
+    box-shadow:
+      0 0 16px 4px rgba(246,210,122,0.38),
+      0 8px 32px 0 rgba(0,0,0,0.45),
+      0 1.5px 8px 0 rgba(246,210,122,0.10);
     transform: scale(1.03) translateY(-6px);
     transition: box-shadow 0.2s, transform 0.2s;
     margin-left: auto;
@@ -644,6 +647,7 @@ html, body, #root {
     padding-right: 4vw;
     display: flex;
     flex-direction: column;
+    background: rgba(0,0,0,0.10);
   }
 
   /* Limit the card body to allow internal scrolling without overflowing the viewport */
