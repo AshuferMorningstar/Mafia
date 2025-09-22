@@ -1,18 +1,24 @@
 import React, { useState, useEffect, useRef } from 'react';
 import '../styles.css';
-import socket, { socket as ioSocket } from '../lib/socket';
+import socket from '../lib/socket';
 
-export default function GameLobby({ roomCode = '7XYRGF', players = ['Alice','Bob','Charlie','David'], isHost = true, onStart = () => {}, onClose = () => {} }) {
+export default function GameLobby({ roomCode = '7XYRGF', players = ['Alice','Bob','Charlie','David'], isHost = true, playerName = null, onStart = () => {}, onClose = () => {}, onLeave = () => {} }) {
   const [activeTab, setActiveTab] = useState('players');
   const [playerList, setPlayerList] = useState(players);
+  // stable local player identity (used for join/leave and local labeling)
+  const meRef = useRef(null);
+  if (!meRef.current) {
+    const generated = { id: Math.random().toString(36).slice(2,9), name: `Player-${Math.random().toString(36).slice(2,5)}` };
+  meRef.current = playerName ? { id: generated.id, name: playerName } : generated;
+  }
   const [messages, setMessages] = useState([]);
   const inputRef = useRef(null);
 
   useEffect(() => {
-    // Connect socket when lobby mounts
-    ioSocket.connect();
+  // Connect socket when lobby mounts
+  socket.connect();
 
-    const me = { id: Math.random().toString(36).slice(2,9), name: 'You' };
+  const me = meRef.current;
     // fetch initial state (players + recent messages)
     fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/rooms/${roomCode}/players`)
       .then((r) => r.json())
@@ -24,21 +30,69 @@ export default function GameLobby({ roomCode = '7XYRGF', players = ['Alice','Bob
       .catch(() => {});
 
     // Join the room
-    ioSocket.emit('join_room', { roomId: roomCode, player: me, token: undefined });
+  socket.emit('join_room', { roomId: roomCode, player: me, token: undefined });
 
-    ioSocket.on('player_joined', (data) => {
-      setPlayerList((prev) => [...prev, data.player]);
-    });
-    ioSocket.on('player_left', (data) => {
-      setPlayerList((prev) => prev.filter((p) => p.id !== data.player?.id));
-    });
-    ioSocket.on('new_message', (data) => {
-      setMessages((prev) => [...prev, data.message]);
-    });
+    // Clear any existing listeners first (helps with React StrictMode double-mount in dev)
+    socket.off('player_joined');
+    socket.off('player_left');
+    socket.off('new_message');
+
+    const handlePlayerJoined = (data) => {
+      const incoming = data?.player;
+      if (!incoming) return;
+      setPlayerList((prev) => {
+        // dedupe by id or name
+        const exists = prev.some((p) => {
+          const pid = p && typeof p === 'object' ? p.id : p;
+          const iid = incoming && typeof incoming === 'object' ? incoming.id : incoming;
+          const pname = p && typeof p === 'object' ? p.name : p;
+          const iname = incoming && typeof incoming === 'object' ? incoming.name : incoming;
+          return (pid && iid && pid === iid) || (pname && iname && pname === iname);
+        });
+        if (exists) return prev;
+        return [...prev, incoming];
+      });
+    };
+
+    const handlePlayerLeft = (data) => {
+      const leaving = data?.player;
+      if (!leaving) return;
+      setPlayerList((prev) => prev.filter((p) => {
+        const pid = p && typeof p === 'object' ? p.id : p;
+        const pname = p && typeof p === 'object' ? p.name : p;
+        const lid = leaving && typeof leaving === 'object' ? leaving.id : leaving;
+        const lname = leaving && typeof leaving === 'object' ? leaving.name : leaving;
+        return !(pid === lid || (pname && lname && pname === lname));
+      }));
+    };
+
+    const handleNewMessage = (data) => {
+      const message = data?.message || data;
+      if (!message) return;
+      setMessages((prev) => {
+        // dedupe by message id (or fallback to timestamp+text match)
+        const exists = prev.some((m) => {
+          if (!m) return false;
+          if (m.id && message.id) return m.id === message.id;
+          if (m.ts && message.ts && m.text && message.text) return m.ts === message.ts && m.text === message.text;
+          return false;
+        });
+        if (exists) return prev;
+        return [...prev, message];
+      });
+    };
+
+    socket.on('player_joined', handlePlayerJoined);
+    socket.on('player_left', handlePlayerLeft);
+    socket.on('new_message', handleNewMessage);
 
     return () => {
-      ioSocket.emit('leave_room', { roomId: roomCode, player: me });
-      ioSocket.disconnect();
+      // remove the handlers we registered and leave the room
+      socket.off('player_joined', handlePlayerJoined);
+      socket.off('player_left', handlePlayerLeft);
+      socket.off('new_message', handleNewMessage);
+      socket.emit('leave_room', { roomId: roomCode, player: me });
+      socket.disconnect();
     };
   }, [roomCode]);
 
@@ -72,16 +126,27 @@ export default function GameLobby({ roomCode = '7XYRGF', players = ['Alice','Bob
         >
           {activeTab === 'players' ? (
             <ul className="lobby-players-list">
-              {playerList.map((p, i) => (<li key={p.id || i} className="lobby-player-item">{p.name || p}</li>))}
+              {playerList.map((p, i) => {
+                const pid = p && typeof p === 'object' ? p.id : p;
+                const pname = p && typeof p === 'object' ? p.name : p;
+                const display = pname || p;
+                const isLocal = pid === meRef.current.id;
+                const isHostPlayer = isLocal && isHost; // if current user is host, mark them
+                return (
+                  <li key={`${pid || display}-${i}`} className="lobby-player-item">
+                    {display}{isHostPlayer ? ' — Host' : ''}
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <>
               <div style={{flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', minHeight: 0}}>
                 <div className="lobby-chat-placeholder">Chat will appear here</div>
                 <div className="chat-messages" id="chat-messages">
-                  {messages.map((m) => (
-                    <div key={m.id} style={{padding: '6px 0'}}>
-                      <strong style={{color: '#f3d7b0'}}>{m.from?.name || 'Anon'}:</strong>
+                  {messages.map((m, idx) => (
+                    <div key={`${m.id}-${idx}`} style={{padding: '6px 0'}}>
+                      <strong style={{color: '#f3d7b0'}}>{m.from?.name || m.sender_name || 'Anon'}:</strong>
                       <span style={{marginLeft: 8}}>{m.text}</span>
                     </div>
                   ))}
@@ -107,9 +172,12 @@ export default function GameLobby({ roomCode = '7XYRGF', players = ['Alice','Bob
               onClick={() => {
                 const text = inputRef.current?.value;
                 if (!text) return;
-                const message = { id: Date.now(), from: { id: 'you', name: 'You' }, text, ts: Date.now() };
-                ioSocket.emit('send_message', { roomId: roomCode, message });
-                setMessages((prev) => [...prev, message]);
+                const me = meRef.current;
+                const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
+                const message = { id: uniqueId, from: { id: me.id, name: me.name }, text, ts: Date.now() };
+                // Emit to server; do not locally append — server will broadcast back and our
+                // `new_message` handler will add it (with dedupe by id to avoid duplicates).
+                socket.emit('send_message', { roomId: roomCode, message });
                 if (inputRef.current) inputRef.current.value = '';
               }}
               className="chat-send-btn"

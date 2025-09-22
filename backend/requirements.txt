@@ -3,3 +3,6 @@ uvicorn
 python-dotenv
 asgiref
 PyJWT
+
+# Socket.IO server for Python
+python-socketio[asyncio]

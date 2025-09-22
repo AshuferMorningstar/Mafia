@@ -19,7 +19,8 @@ export default function App() {
   const [lobby, setLobby] = useState(null);
 
   useEffect(() => {
-    fetch('http://127.0.0.1:5001/')
+    const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    fetch(`${API}/`)
       .then(res => res.json())
       .then(data => setApiMessage(data.message || JSON.stringify(data)))
       .catch(() => setApiMessage('Backend not available'));
@@ -229,6 +230,7 @@ export default function App() {
             roomCode={lobby.roomCode}
             players={lobby.players}
             isHost={lobby.isHost}
+            playerName={lobby.players[0]}
             onLeave={() => { setPage('home'); setLobby(null); }}
             onStart={() => { setPage('game'); }}
             onClose={() => { setPage('home'); setLobby(null); }}

@@ -1,10 +1,14 @@
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 import sqlite3
 import os
 import time
+
+# import python-socketio ASGI
+import socketio
+
 
 app = FastAPI()
 
@@ -18,23 +22,24 @@ app.add_middleware(
 )
 
 
-
-
 @app.get("/")
 async def read_root():
     return {"message": "Mafia backend is running!"}
 
 
+# in-memory room player list
 _rooms = {}
 
 
 # --- Simple SQLite persistence for messages ---
 DB_PATH = os.path.join(os.path.dirname(__file__), 'chat.db')
 
+
 def get_db_conn():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
+
 
 def init_db():
     conn = get_db_conn()
@@ -52,6 +57,7 @@ def init_db():
     conn.commit()
     conn.close()
 
+
 def save_message(room, message):
     conn = get_db_conn()
     cur = conn.cursor()
@@ -60,6 +66,7 @@ def save_message(room, message):
     ))
     conn.commit()
     conn.close()
+
 
 def get_recent_messages(room, limit=50):
     conn = get_db_conn()
@@ -74,6 +81,94 @@ def get_recent_messages(room, limit=50):
 init_db()
 
 
+# ----------------- Socket.IO server -----------------
+# Create an Async Socket.IO server and mount it on the FastAPI app via ASGI
+# Enable socketio/engineio logging to surface handshake details in uvicorn logs
+sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*', logger=True, engineio_logger=True)
+socket_app = socketio.ASGIApp(sio, other_asgi_app=app)
+
+
+@sio.event
+async def connect(sid, environ, auth):
+    # Print helpful debug info for handshake troubleshooting
+    print('Socket connect:', sid)
+    try:
+        # environ is the WSGI/ASGI environ - print common fields
+        remote = environ.get('REMOTE_ADDR') or environ.get('REMOTE_HOST')
+        origin = None
+        # headers may be bytes tuples depending on server; attempt to extract
+        headers = environ.get('headers') or environ.get('HTTP_HEADERS') or []
+        # Try to find origin header
+        for h in headers:
+            try:
+                # h might be a (b'name', b'value') tuple
+                if isinstance(h, (list, tuple)) and len(h) >= 2:
+                    name = h[0].decode() if isinstance(h[0], bytes) else str(h[0])
+                    val = h[1].decode() if isinstance(h[1], bytes) else str(h[1])
+                    if name.lower() == 'origin':
+                        origin = val
+            except Exception:
+                continue
+        print(f"  remote={remote} origin={origin}")
+        # Print a small subset of headers for visibility
+        head_preview = []
+        for h in headers[:10]:
+            try:
+                k = h[0].decode() if isinstance(h[0], bytes) else str(h[0])
+                v = h[1].decode() if isinstance(h[1], bytes) else str(h[1])
+                head_preview.append(f"{k}: {v}")
+            except Exception:
+                continue
+        if head_preview:
+            print('  headers:', head_preview)
+    except Exception as e:
+        print('  connect debug error:', e)
+
+
+@sio.event
+async def disconnect(sid):
+    print('Socket disconnect:', sid)
+
+
+@sio.on('join_room')
+async def handle_join(sid, data):
+    room = data.get('roomId')
+    player = data.get('player')
+    if not room or not player:
+        return
+    # add player to in-memory room list
+    lst = _rooms.setdefault(room, [])
+    # avoid duplicates
+    if not any(p.get('id') == player.get('id') for p in lst):
+        lst.append(player)
+    await sio.save_session(sid, {'room': room, 'player': player})
+    await sio.enter_room(sid, room)
+    # broadcast to room
+    await sio.emit('player_joined', {'player': player}, room=room)
+
+
+@sio.on('leave_room')
+async def handle_leave(sid, data):
+    room = data.get('roomId')
+    player = data.get('player')
+    if room and player:
+        lst = _rooms.get(room, [])
+        _rooms[room] = [p for p in lst if p.get('id') != player.get('id')]
+        await sio.leave_room(sid, room)
+        await sio.emit('player_left', {'player': player}, room=room)
+
+
+@sio.on('send_message')
+async def handle_message(sid, data):
+    room = data.get('roomId')
+    message = data.get('message')
+    if room and message:
+        try:
+            save_message(room, message)
+        except Exception:
+            pass
+        await sio.emit('new_message', {'message': message}, room=room)
+
 
 @app.get('/rooms/{room_id}/messages')
 async def room_messages(room_id: str, limit: int = 50):
@@ -84,5 +179,9 @@ async def room_messages(room_id: str, limit: int = 50):
 @app.get('/rooms/{room_id}/players')
 async def room_players(room_id: str):
     return JSONResponse({'players': _rooms.get(room_id, [])})
+
+
+# expose the ASGI app at the module level so uvicorn can import app
+asgi_app = socket_app
 
 
