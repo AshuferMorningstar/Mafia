@@ -13,6 +13,50 @@ export default function GameLobby({ roomCode = '7XYRGF', players = ['Alice','Bob
   }
   const [messages, setMessages] = useState([]);
   const inputRef = useRef(null);
+  const [copyStatus, setCopyStatus] = useState('');
+  const [shareStatus, setShareStatus] = useState('');
+
+  const shareUrl = (() => {
+    try { return `${window.location.origin}${window.location.pathname}?room=${roomCode}`; } catch (e) { return roomCode; }
+  })();
+
+  const doCopy = async () => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+      } else {
+        // fallback: create temporary textarea
+        const t = document.createElement('textarea');
+        t.value = shareUrl;
+        document.body.appendChild(t);
+        t.select();
+        document.execCommand('copy');
+        document.body.removeChild(t);
+      }
+      setCopyStatus('Copied');
+      setTimeout(() => setCopyStatus(''), 2000);
+    } catch (err) {
+      setCopyStatus('Copy failed');
+      setTimeout(() => setCopyStatus(''), 2400);
+    }
+  };
+
+  const doShare = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: `Join my Mafia room ${roomCode}`, text: `Join my Mafia room: ${roomCode}`, url: shareUrl });
+        setShareStatus('Shared');
+      } else {
+        await doCopy();
+        setShareStatus('Link copied');
+      }
+    } catch (err) {
+      // if user cancels or share fails, fall back to copy
+      await doCopy();
+      setShareStatus('Link copied');
+    }
+    setTimeout(() => setShareStatus(''), 2000);
+  };
 
   useEffect(() => {
   // Connect socket when lobby mounts
@@ -110,6 +154,25 @@ export default function GameLobby({ roomCode = '7XYRGF', players = ['Alice','Bob
         <h1 className="lobby-hero-title welcome-title metallic-gradient">Mafia Game Lobby</h1>
         <p className="lobby-hero-sub welcome-sub metallic-gradient">A thrilling game of deception and strategy</p>
         <div className="lobby-roomcode">ROOM CODE: <span className="code-text">{roomCode}</span></div>
+        <div style={{marginTop:8, display:'flex', gap:8, alignItems:'center'}}>
+          <button className="room-action-btn" onClick={doCopy} title="Copy room link" aria-label="Copy room link">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden>
+              <path d="M16 3H8a2 2 0 0 0-2 2v2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              <rect x="8" y="7" width="10" height="12" rx="2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M16 3v2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+          <button className="room-action-btn" onClick={doShare} title="Share room link" aria-label="Share room link">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden>
+              <circle cx="18" cy="5" r="2" stroke="currentColor" strokeWidth="1.6"/>
+              <circle cx="6" cy="12" r="2" stroke="currentColor" strokeWidth="1.6"/>
+              <circle cx="18" cy="19" r="2" stroke="currentColor" strokeWidth="1.6"/>
+              <path d="M8 12l8-5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M8 12l8 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+          <div style={{minWidth:60,fontSize:13,color:'var(--muted)'}}>{copyStatus || shareStatus || ''}</div>
+        </div>
       </header>
 
       <main className="lobby-card">

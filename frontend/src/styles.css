@@ -597,6 +597,7 @@ html, body, #root {
   min-height:100vh;
 }
 .lobby-main-header{text-align:center;color:var(--text);max-width:820px}
+.lobby-main-header{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding-top:6px}
 .lobby-hero-title{font-family:Inter, sans-serif;font-size:3.2rem;margin:0;color:#f3d7b0}
 .lobby-hero-sub{margin:8px 0 18px;color:var(--muted);font-size:1.1rem}
 
@@ -632,10 +633,12 @@ html, body, #root {
   box-shadow: 0 12px 36px rgba(0,0,0,0.35);
   display: flex;
   flex-direction: column;
-  min-height: clamp(320px, 60vh, 520px);
+  /* allow the header to expand — card will move down naturally; base min-height reduced slightly to improve small-screen fit */
+  min-height: clamp(280px, 56vh, 520px);
   max-height: 90vh;
   overflow: auto;
 }
+.lobby-main-header > .lobby-roomcode + div{display:flex;gap:8px;align-items:center;justify-content:center;width:100%;}
 .lobby-card-top{padding:8px 8px 0}
 .lobby-tabs{display:flex;gap:18px}
 .lobby-tab{flex:1;padding:18px 12px;border-radius:12px;background:transparent;border:none;color:var(--muted);font-weight:700;cursor:pointer}
@@ -657,6 +660,13 @@ html, body, #root {
 
 /* external actions: placed below lobby card, matching card width */
 .external-actions{display:flex;gap:14px;margin-top:22px;width:100%;justify-content:center}
+.lobby-card{margin-top:clamp(12px,3vh,28px)}
+
+/* If viewport is short, nudge card and external actions down a bit to ensure header + icons fit */
+@media (max-height:640px){
+  .lobby-card{margin-top:28px;min-height:220px}
+  .external-actions{margin-top:28px}
+}
 .external-actions .lobby-action{flex:1;min-width:160px;padding:16px 18px;border-radius:12px;border:none;cursor:pointer;font-weight:800}
 .external-actions .lobby-action.start{background:linear-gradient(90deg,#f6d27a 0%,#c7983a 100%);color:#2b1f12}
 .external-actions .lobby-action.close{background:linear-gradient(90deg,#f6ecd8 0%,#f4d57e 45%,#c7983a 100%);color:#2b1f12}
@@ -676,6 +686,18 @@ html, body, #root {
   .external-actions{width:900px;max-width:98vw;}
   .external-actions{margin-top:28px}
   .external-actions .lobby-action{padding:18px 20px}
+
+  /* Desktop tweak: reduce vertical space above header so icons don't overflow the card
+     and ensure the card and action buttons still sit below the header. */
+  .lobby-centered { padding-top: 8px; padding-bottom: clamp(12px, 3vw, 28px); }
+  .lobby-main-header { padding-top: 0; margin-bottom: 6px; }
+  /* reduce the card top margin so header + icons fit comfortably above it */
+  .lobby-card { margin-top: 12px; }
+  /* ensure external actions are still below the card */
+  .external-actions { margin-top: 20px; }
+
+  /* Keep action icons centered on desktop as well */
+  .lobby-main-header > .lobby-roomcode + div { justify-content: center; }
 }
 
 @media (max-width:899px){
@@ -764,3 +786,21 @@ html, body, #root {
   /* Reduce large hero text on very small phones to preserve space */
   .lobby-hero-title{font-size:1.9rem}
 }
+
+/* Small circular icon buttons used for room copy/share actions */
+.room-action-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:36px;
+  height:36px;
+  border-radius:10px;
+  border:none;
+  background: rgba(255,255,255,0.03);
+  color: var(--text);
+  cursor:pointer;
+  transition: transform 120ms ease, background 120ms ease, box-shadow 120ms ease;
+}
+.room-action-btn:hover{ transform: translateY(-2px); background: rgba(255,255,255,0.06); box-shadow: 0 6px 14px rgba(0,0,0,0.28); }
+.room-action-btn:active{ transform: translateY(0); }
+.room-action-btn svg{ display:block }
