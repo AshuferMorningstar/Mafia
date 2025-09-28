@@ -723,10 +723,11 @@ html, body, #root {
     right: auto;
     bottom: auto;
     z-index: auto;
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-    align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
     background: none;
     padding: 0;
     border-radius: 0;
@@ -737,8 +738,8 @@ html, body, #root {
     flex-wrap: wrap;
   }
 
-  /* Slightly smaller buttons on very narrow screens but keep them side-by-side */
-  .external-actions .lobby-action{min-width:44%;flex:1;padding:10px 6px;max-width:100vw;}
+  /* Stack buttons vertically on mobile and make them comfortably tappable */
+  .external-actions .lobby-action{width:92%;max-width:92%;padding:14px 14px;border-radius:12px;font-size:1rem}
 
   /* Remove extra margin from card since actions are not floating */
   .lobby-card{
