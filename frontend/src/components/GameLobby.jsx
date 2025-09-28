@@ -154,7 +154,7 @@ export default function GameLobby({ roomCode = '7XYRGF', players = ['Alice','Bob
         <h1 className="lobby-hero-title welcome-title metallic-gradient">Mafia Game Lobby</h1>
         <p className="lobby-hero-sub welcome-sub metallic-gradient">A thrilling game of deception and strategy</p>
         <div className="lobby-roomcode">ROOM CODE: <span className="code-text">{roomCode}</span></div>
-        <div style={{marginTop:8, display:'flex', gap:8, alignItems:'center'}}>
+        <div className="room-code-actions">
           <button className="room-action-btn" onClick={doCopy} title="Copy room link" aria-label="Copy room link">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden>
               <path d="M16 3H8a2 2 0 0 0-2 2v2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
@@ -171,7 +171,7 @@ export default function GameLobby({ roomCode = '7XYRGF', players = ['Alice','Bob
               <path d="M8 12l8 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </button>
-          <div style={{minWidth:60,fontSize:13,color:'var(--muted)'}}>{copyStatus || shareStatus || ''}</div>
+          <div className="room-action-status">{copyStatus || shareStatus || ''}</div>
         </div>
       </header>
 

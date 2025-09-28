@@ -638,7 +638,14 @@ html, body, #root {
   max-height: 90vh;
   overflow: auto;
 }
-.lobby-main-header > .lobby-roomcode + div{display:flex;gap:8px;align-items:center;justify-content:center;width:100%;}
+.lobby-main-header > .lobby-roomcode + div{
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  margin: 8px auto 0 auto;
+}
 .lobby-card-top{padding:8px 8px 0}
 .lobby-tabs{display:flex;gap:18px}
 .lobby-tab{flex:1;padding:18px 12px;border-radius:12px;background:transparent;border:none;color:var(--muted);font-weight:700;cursor:pointer}
@@ -660,7 +667,7 @@ html, body, #root {
 
 /* external actions: placed below lobby card, matching card width */
 .external-actions{display:flex;gap:14px;margin-top:22px;width:100%;justify-content:center}
-.lobby-card{margin-top:clamp(12px,3vh,28px)}
+.lobby-card{margin: clamp(12px,3vh,28px) auto 0;}
 
 /* If viewport is short, nudge card and external actions down a bit to ensure header + icons fit */
 @media (max-height:640px){
@@ -804,3 +811,23 @@ html, body, #root {
 .room-action-btn:hover{ transform: translateY(-2px); background: rgba(255,255,255,0.06); box-shadow: 0 6px 14px rgba(0,0,0,0.28); }
 .room-action-btn:active{ transform: translateY(0); }
 .room-action-btn svg{ display:block }
+
+/* Container for the small copy/share buttons shown under the room code */
+.room-code-actions{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  justify-content:center;
+  margin-top:8px;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Small status text next to the action icons. Keep width flexible to avoid pushing layout */
+.room-action-status{
+  min-width: 0;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+}
