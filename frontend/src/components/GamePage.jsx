@@ -11,11 +11,13 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
 
   const doCopy = async () => {
     try {
+      // Copy only the room code (not the full URL)
+      const textToCopy = roomCode;
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(shareUrl);
+        await navigator.clipboard.writeText(textToCopy);
       } else {
         const t = document.createElement('textarea');
-        t.value = shareUrl;
+        t.value = textToCopy;
         document.body.appendChild(t);
         t.select();
         document.execCommand('copy');
