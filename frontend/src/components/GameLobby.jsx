@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import '../styles.css';
 import socket from '../lib/socket';
 
-export default function GameLobby({ roomCode = '7XYRGF', players = ['Alice','Bob','Charlie','David'], isHost = true, playerName = null, onStart = () => {}, onClose = () => {}, onLeave = () => {} }) {
+export default function GameLobby({ roomCode = '7XYRGF', players = ['Alice','Bob','Charlie','David'], isHost = true, hostId: initialHostId = null, playerName = null, onStart = () => {}, onClose = () => {}, onLeave = () => {} }) {
   const [activeTab, setActiveTab] = useState('players');
   const [playerList, setPlayerList] = useState(players);
+  const [hostId, setHostId] = useState(initialHostId || null);
   // stable local player identity (used for join/leave and local labeling)
   const meRef = useRef(null);
   if (!meRef.current) {
@@ -19,7 +20,7 @@ export default function GameLobby({ roomCode = '7XYRGF', players = ['Alice','Bob
   const shareUrl = (() => {
     try { return `${window.location.origin}${window.location.pathname}?room=${roomCode}`; } catch (e) { return roomCode; }
   })();
-
+  // hostId state is set from server or initial prop; used to label the Host to all clients
   const doCopy = async () => {
     try {
       // Copy only the room code (not the full URL)
@@ -67,7 +68,10 @@ export default function GameLobby({ roomCode = '7XYRGF', players = ['Alice','Bob
     // fetch initial state (players + recent messages)
     fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/rooms/${roomCode}/players`)
       .then((r) => r.json())
-      .then((d) => setPlayerList(d.players || []))
+      .then((d) => {
+        setPlayerList(d.players || []);
+        if (d.host_id) setHostId(d.host_id);
+      })
       .catch(() => {});
     fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/rooms/${roomCode}/messages`)
       .then((r) => r.json())
@@ -99,6 +103,12 @@ export default function GameLobby({ roomCode = '7XYRGF', players = ['Alice','Bob
       });
     };
 
+    const handleRoomState = (data) => {
+      if (!data) return;
+      if (Array.isArray(data.players)) setPlayerList(data.players);
+      if (data.host_id) setHostId(data.host_id);
+    };
+
     const handlePlayerLeft = (data) => {
       const leaving = data?.player;
       if (!leaving) return;
@@ -128,12 +138,14 @@ export default function GameLobby({ roomCode = '7XYRGF', players = ['Alice','Bob
     };
 
     socket.on('player_joined', handlePlayerJoined);
+  socket.on('room_state', handleRoomState);
     socket.on('player_left', handlePlayerLeft);
     socket.on('new_message', handleNewMessage);
 
     return () => {
       // remove the handlers we registered and leave the room
       socket.off('player_joined', handlePlayerJoined);
+      socket.off('room_state', handleRoomState);
       socket.off('player_left', handlePlayerLeft);
       socket.off('new_message', handleNewMessage);
       socket.emit('leave_room', { roomId: roomCode, player: me });
@@ -194,8 +206,7 @@ export default function GameLobby({ roomCode = '7XYRGF', players = ['Alice','Bob
                 const pid = p && typeof p === 'object' ? p.id : p;
                 const pname = p && typeof p === 'object' ? p.name : p;
                 const display = pname || p;
-                const isLocal = pid === meRef.current.id;
-                const isHostPlayer = isLocal && isHost; // if current user is host, mark them
+                const isHostPlayer = pid && hostId && pid === hostId;
                 return (
                   <li key={`${pid || display}-${i}`} className="lobby-player-item">
                     {display}{isHostPlayer ? ' — Host' : ''}
@@ -254,8 +265,14 @@ export default function GameLobby({ roomCode = '7XYRGF', players = ['Alice','Bob
       </main>
 
       <div className="lobby-actions external-actions">
-        {isHost && <button className="lobby-action start" onClick={onStart}>START GAME</button>}
-        <button className="lobby-action close" onClick={onClose}>CLOSE ROOM</button>
+        {((hostId && meRef.current && meRef.current.id === hostId) || isHost) ? (
+          <>
+            <button className="lobby-action start" onClick={onStart}>START GAME</button>
+            <button className="lobby-action close" onClick={onClose}>CLOSE ROOM</button>
+          </>
+        ) : (
+          <button className="lobby-action close" onClick={onLeave}>LEAVE LOBBY</button>
+        )}
       </div>
 
     </div>

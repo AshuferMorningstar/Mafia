@@ -230,6 +230,7 @@ export default function App() {
             roomCode={lobby.roomCode}
             players={lobby.players}
             isHost={lobby.isHost}
+            hostId={lobby.hostId}
             playerName={lobby.players[0]}
             onLeave={() => { setPage('home'); setLobby(null); }}
             onStart={() => { setPage('game'); }}

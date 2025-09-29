@@ -29,6 +29,8 @@ async def read_root():
 
 # in-memory room player list
 _rooms = {}
+# room metadata (e.g., host id)
+_room_meta = {}
 
 
 # --- Simple SQLite persistence for messages ---
@@ -141,10 +143,17 @@ async def handle_join(sid, data):
     # avoid duplicates
     if not any(p.get('id') == player.get('id') for p in lst):
         lst.append(player)
+    # ensure room metadata exists
+    meta = _room_meta.setdefault(room, {})
+    # if no host assigned yet, the first player becomes host
+    if not meta.get('host_id'):
+        meta['host_id'] = player.get('id')
     await sio.save_session(sid, {'room': room, 'player': player})
     await sio.enter_room(sid, room)
     # broadcast to room
     await sio.emit('player_joined', {'player': player}, room=room)
+    # also emit a room_state update (players + host)
+    await sio.emit('room_state', {'players': _rooms.get(room, []), 'host_id': meta.get('host_id')}, room=room)
 
 
 @sio.on('leave_room')
@@ -156,6 +165,12 @@ async def handle_leave(sid, data):
         _rooms[room] = [p for p in lst if p.get('id') != player.get('id')]
         await sio.leave_room(sid, room)
         await sio.emit('player_left', {'player': player}, room=room)
+        # update room metadata: if host left, promote next player (if any)
+        meta = _room_meta.get(room, {})
+        if meta.get('host_id') == player.get('id'):
+            remaining = _rooms.get(room, [])
+            meta['host_id'] = remaining[0].get('id') if remaining else None
+            await sio.emit('room_state', {'players': _rooms.get(room, []), 'host_id': meta.get('host_id')}, room=room)
 
 
 @sio.on('send_message')
@@ -178,7 +193,9 @@ async def room_messages(room_id: str, limit: int = 50):
 
 @app.get('/rooms/{room_id}/players')
 async def room_players(room_id: str):
-    return JSONResponse({'players': _rooms.get(room_id, [])})
+    players = _rooms.get(room_id, [])
+    meta = _room_meta.get(room_id, {})
+    return JSONResponse({'players': players, 'host_id': meta.get('host_id')})
 
 
 # expose the ASGI app at the module level so uvicorn can import app
