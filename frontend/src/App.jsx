@@ -9,6 +9,7 @@ import TopDashboard from './components/TopDashboard';
 import SlidingPanel from './components/SlidingPanel';
 import GameLobby from './components/GameLobby';
 import GamePage from './components/GamePage.jsx';
+import PortalSelect from './components/PortalSelect';
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -208,23 +209,35 @@ export default function App() {
           <div className="panel-section">
             <label className="panel-label" htmlFor="settings-killers">Number of Killers</label>
             <div>
-              <select id="settings-killers" name="killCount" className="panel-select" value={settings.killCount} onChange={(e) => setSettings((s) => ({ ...s, killCount: Number(e.target.value) }))}>
-                {[1,2,3].map((n) => <option key={n} value={n}>{n}</option>)}
-              </select>
+              <PortalSelect
+                id="settings-killers"
+                className="panel-select"
+                value={settings.killCount}
+                onChange={(e) => setSettings((s) => ({ ...s, killCount: Number(e.target.value) }))}
+                options={[1,2,3].map((n) => ({ value: n, label: String(n) }))}
+              />
             </div>
-
+            
             <div className="panel-section">
               <label className="panel-label" htmlFor="settings-doctors">Doctors</label>
-              <select id="settings-doctors" name="doctorCount" className="panel-select" value={settings.doctorCount} onChange={(e) => setSettings((s) => ({ ...s, doctorCount: Number(e.target.value) }))}>
-                {[0,1,2].map((n) => <option key={n} value={n}>{n}</option>)}
-              </select>
+              <PortalSelect
+                id="settings-doctors"
+                className="panel-select"
+                value={settings.doctorCount}
+                onChange={(e) => setSettings((s) => ({ ...s, doctorCount: Number(e.target.value) }))}
+                options={[0,1,2].map((n) => ({ value: n, label: String(n) }))}
+              />
             </div>
 
             <div className="panel-section">
               <label className="panel-label" htmlFor="settings-detectives">Detectives</label>
-              <select id="settings-detectives" name="detectiveCount" className="panel-select" value={settings.detectiveCount} onChange={(e) => setSettings((s) => ({ ...s, detectiveCount: Number(e.target.value) }))}>
-                {[0,1,2].map((n) => <option key={n} value={n}>{n}</option>)}
-              </select>
+              <PortalSelect
+                id="settings-detectives"
+                className="panel-select"
+                value={settings.detectiveCount}
+                onChange={(e) => setSettings((s) => ({ ...s, detectiveCount: Number(e.target.value) }))}
+                options={[0,1,2].map((n) => ({ value: n, label: String(n) }))}
+              />
             </div>
 
             <div className="panel-note">Settings are saved locally and applied when creating a room.</div>
