@@ -610,10 +610,12 @@ html, body, #root {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255,255,255,0.02);
-  border-radius: 10px;
-  padding: 8px 12px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.06));
+  border-radius: 12px;
+  padding: 10px 14px;
   color: var(--muted);
+  border: 1px solid rgba(255,255,255,0.04);
+  box-shadow: 0 10px 26px rgba(0,0,0,0.36);
 }
 .role-notification-content { text-align:center }
 .role-notification-sub { font-size:0.85rem; color: rgba(243,198,198,0.9); margin-top:4px }

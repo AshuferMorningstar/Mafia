@@ -166,8 +166,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
         {/* Small role-specific notification area (compact) */}
         <div className="role-notification-card" role="status" aria-live="polite" style={{marginTop:10}}>
           <div className="role-notification-content">
-            <strong>No alerts</strong>
-            <div className="role-notification-sub">Role-specific messages will appear here</div>
+            <div className="role-notification-sub">Notifications will appear here</div>
           </div>
         </div>
       </header>
