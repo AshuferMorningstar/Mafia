@@ -741,13 +741,20 @@ html, body, #root {
 .lobby-actions{width:100%;margin-top:18px}
 
 @media (min-width:900px){
-  /* Make the card and action buttons fit the available space (accounting for side panel)
-     instead of using a hard 900px which can overflow on narrower desktop viewports. */
-  .lobby-card{width: min(900px, calc(100vw - 260px)); max-width:98vw;}
+  /* Make the card and action buttons fit the available space (accounting for side panel).
+     For a more compact desktop feel, render the card smaller and square (like mobile). */
+  .lobby-card{
+    width: min(420px, calc(100vw - 260px));
+    max-width:98vw;
+    aspect-ratio: 1 / 1; /* square card */
+    min-height: 0; /* let aspect-ratio control height */
+    padding: 18px;
+    border-radius: 14px;
+  }
   /* Ensure header content lines up with the lobby card width */
-  .lobby-main-header { width: min(900px, calc(100vw - 260px)); max-width:98vw; margin: 0 auto; }
-  .lobby-main-header > .lobby-roomcode + div, .room-code-actions { width: min(900px, calc(100vw - 260px)); margin: 0 auto; }
-  .external-actions{width: min(900px, calc(100vw - 260px)); max-width:98vw;padding:0 8px}
+  .lobby-main-header { width: min(420px, calc(100vw - 260px)); max-width:98vw; margin: 0 auto; }
+  .lobby-main-header > .lobby-roomcode + div, .room-code-actions { width: min(420px, calc(100vw - 260px)); margin: 0 auto; }
+  .external-actions{width: min(420px, calc(100vw - 260px)); max-width:98vw;padding:0 8px}
   .external-actions{margin-top:28px}
   .external-actions .lobby-action{padding:14px 16px}
 
@@ -769,6 +776,11 @@ html, body, #root {
   .lobby-main-header > .lobby-roomcode + div { justify-content: center; }
   /* Hide the inline SETTINGS button on desktop because the side panel is available */
   .external-actions .lobby-action.settings { display: none; }
+
+  /* Make the inner card content scroll when the square card can't fit everything */
+  .lobby-card-body { overflow: auto; min-height: 0; max-height: calc(100% - 140px); }
+  .lobby-players-list { gap: 10px; }
+  .lobby-player-item { padding: 10px 10px; border-radius: 10px; font-size: 0.96rem; }
 }
 
 @media (max-width:899px){
