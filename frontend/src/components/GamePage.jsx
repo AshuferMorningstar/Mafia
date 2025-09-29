@@ -76,6 +76,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
 
   const [showSettingsPopup, setShowSettingsPopup] = useState(false);
   const [showSettingsToast, setShowSettingsToast] = useState(false);
+  const [winBanner, setWinBanner] = useState(null); // { winner: 'Killers'|'Civilians', message }
 
   useEffect(() => {
     // Connect socket and fetch initial state
@@ -167,6 +168,8 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
       setNotificationText(text);
       setMessages((prev) => [...prev, { id: `gameover-${Date.now()}`, from: { name: 'System' }, text }]);
       setPhase('ended');
+      // show persistent win banner until dismissed
+      setWinBanner({ winner: d.winner, message: text });
     });
 
     const handlePlayerLeft = (data) => {
@@ -407,11 +410,11 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
             <div className="card">
               <div style={{fontWeight:800, marginBottom:8}}>Room Settings</div>
               <div className="row">
-                <label>Killers <input type="number" min={1} value={localSettings.killCount} onChange={(e) => setLocalSettings((s) => ({...s, killCount: Number(e.target.value)}))} /></label>
-                <label>Doctors <input type="number" min={0} value={localSettings.doctorCount} onChange={(e) => setLocalSettings((s) => ({...s, doctorCount: Number(e.target.value)}))} /></label>
+                <label htmlFor="killCount">Killers <input id="killCount" name="killCount" type="number" min={1} value={localSettings.killCount} onChange={(e) => setLocalSettings((s) => ({...s, killCount: Number(e.target.value)}))} /></label>
+                <label htmlFor="doctorCount">Doctors <input id="doctorCount" name="doctorCount" type="number" min={0} value={localSettings.doctorCount} onChange={(e) => setLocalSettings((s) => ({...s, doctorCount: Number(e.target.value)}))} /></label>
               </div>
               <div className="row">
-                <label>Detectives <input type="number" min={0} value={localSettings.detectiveCount} onChange={(e) => setLocalSettings((s) => ({...s, detectiveCount: Number(e.target.value)}))} /></label>
+                <label htmlFor="detectiveCount">Detectives <input id="detectiveCount" name="detectiveCount" type="number" min={0} value={localSettings.detectiveCount} onChange={(e) => setLocalSettings((s) => ({...s, detectiveCount: Number(e.target.value)}))} /></label>
               </div>
               <div className="actions">
                 <button className="btn cancel" onClick={() => setShowSettingsPopup(false)}>Cancel</button>
@@ -632,6 +635,13 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
         <button className="lobby-action start">VOTE</button>
         <button className="lobby-action close" onClick={onExit}>LEAVE THE ROOM</button>
       </div>
+      {/* persistent win banner */}
+      {winBanner && (
+        <div className={`win-banner ${winBanner.winner === 'Killers' ? 'killers' : 'civilians'}`} role="status" aria-live="polite">
+          <span>{winBanner.message}</span>
+          <button className="dismiss" onClick={() => setWinBanner(null)}>Dismiss</button>
+        </div>
+      )}
     </div>
   );
 }

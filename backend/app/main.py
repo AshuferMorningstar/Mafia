@@ -692,18 +692,35 @@ async def _resolve_votes(room: str):
         eliminated_player = next((p for p in players if p.get('id') == eliminated), None)
         if eliminated_player:
             role = meta.get('assigned_roles', {}).get(eliminated)
-            # remove from active players
-            _rooms[room] = [p for p in players if p.get('id') != eliminated]
+            # mark eliminated (do not remove from players list so UIs can show skull)
             meta.setdefault('eliminated', {})[eliminated] = True
             await sio.emit('vote_result', {'result': 'eliminated', 'player': {'id': eliminated_player.get('id'), 'name': eliminated_player.get('name'), 'role': role}}, room=room)
             meta['phase'] = 'post_vote'
             # after elimination, you may want to check win conditions (not implemented)
             # check win conditions after elimination
             await _check_win_conditions(room)
+            # if game still running, schedule next night cycle
+            if meta.get('in_game'):
+                async def _next_night():
+                    await asyncio.sleep(3)
+                    # re-check in case game ended in the meantime
+                    m = _room_meta.setdefault(room, {})
+                    if m.get('in_game') and m.get('phase') != 'ended':
+                        await _start_night_sequence(room)
+                asyncio.create_task(_next_night())
             return
     # no elimination
     await sio.emit('vote_result', {'result': 'no_elimination', 'top': top, 'counts': counts}, room=room)
     meta['phase'] = 'post_vote'
+    # check win conditions and continue the game if nobody has won
+    await _check_win_conditions(room)
+    if meta.get('in_game'):
+        async def _next_night_noelim():
+            await asyncio.sleep(3)
+            m = _room_meta.setdefault(room, {})
+            if m.get('in_game') and m.get('phase') != 'ended':
+                await _start_night_sequence(room)
+        asyncio.create_task(_next_night_noelim())
 
 
 async def _check_win_conditions(room: str):

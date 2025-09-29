@@ -35,6 +35,12 @@
 .settings-toast.enter { animation: toast-in 240ms ease forwards }
 .settings-toast.exit { animation: toast-out 240ms ease forwards }
 
+/* Win banner shown when game_over is emitted */
+.win-banner { position: fixed; left: 50%; transform: translateX(-50%); top: 18px; z-index: 80; padding: 12px 18px; border-radius: 10px; box-shadow: 0 12px 36px rgba(0,0,0,0.45); font-weight:800 }
+.win-banner.killers { background: linear-gradient(90deg, #b71c1c 0%, #ff4b4b 100%); color: #fff }
+.win-banner.civilians { background: linear-gradient(90deg, #2e7d32 0%, #60b57e 100%); color: #fff }
+.win-banner .dismiss { margin-left:12px; background: rgba(255,255,255,0.12); color: #fff; border: none; padding:6px 10px; border-radius:6px; cursor:pointer }
+
 
 .chat-body-flex {
   display: flex;
