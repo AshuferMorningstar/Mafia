@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import '../styles.css';
 import socket from '../lib/socket';
 
-export default function GameLobby({ roomCode = '7XYRGF', players = ['Alice','Bob','Charlie','David'], isHost = true, hostId: initialHostId = null, playerName = null, onStart = () => {}, onClose = () => {}, onLeave = () => {} }) {
+export default function GameLobby({ roomCode = '7XYRGF', players = ['Alice','Bob','Charlie','David'], isHost = true, hostId: initialHostId = null, playerName = null, settings = {}, onStart = () => {}, onClose = () => {}, onLeave = () => {} }) {
   const [activeTab, setActiveTab] = useState('players');
   const [playerList, setPlayerList] = useState(players);
   const [hostId, setHostId] = useState(initialHostId || null);
@@ -167,6 +167,7 @@ export default function GameLobby({ roomCode = '7XYRGF', players = ['Alice','Bob
         <h1 className="lobby-hero-title welcome-title metallic-gradient">Mafia Game Lobby</h1>
         <p className="lobby-hero-sub welcome-sub metallic-gradient">A thrilling game of deception and strategy</p>
         <div className="lobby-roomcode">ROOM CODE: <span className="code-text">{roomCode}</span></div>
+        {/* roles summary intentionally hidden in lobby UI */}
         <div className="room-code-actions">
           <button className="room-action-btn" onClick={doCopy} title="Copy room link" aria-label="Copy room link">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden>

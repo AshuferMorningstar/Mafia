@@ -17,6 +17,7 @@ export default function App() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [page, setPage] = useState('home');
   const [lobby, setLobby] = useState(null);
+  const [settings, setSettings] = useState({ killCount: 1, doctorCount: 0, detectiveCount: 0 });
 
   useEffect(() => {
     const API = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -200,6 +201,38 @@ export default function App() {
       );
     }
 
+    if (tab === 'Settings') {
+      return (
+        <div className="panel-body">
+          <h4 className="panel-heading">Game Settings</h4>
+          <div className="panel-section">
+            <label className="panel-label">Number of Killers</label>
+            <div>
+              <select className="panel-select" value={settings.killCount} onChange={(e) => setSettings((s) => ({ ...s, killCount: Number(e.target.value) }))}>
+                {[1,2,3].map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
+
+            <div className="panel-section">
+              <label className="panel-label">Doctors</label>
+              <select className="panel-select" value={settings.doctorCount} onChange={(e) => setSettings((s) => ({ ...s, doctorCount: Number(e.target.value) }))}>
+                {[0,1,2].map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
+
+            <div className="panel-section">
+              <label className="panel-label">Detectives</label>
+              <select className="panel-select" value={settings.detectiveCount} onChange={(e) => setSettings((s) => ({ ...s, detectiveCount: Number(e.target.value) }))}>
+                {[0,1,2].map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
+
+            <div className="panel-note">Settings are saved locally and applied when creating a room.</div>
+          </div>
+        </div>
+      );
+    }
+
     return <div className="panel-placeholder">Content for {tab} will go here — paste your text and I'll render it.</div>;
   }
 
@@ -212,11 +245,11 @@ export default function App() {
           <WelcomePage onStart={() => alert('Start Game')} onCreate={() => setPage('create')} onJoin={() => setPage('join')} apiMessage={apiMessage} />
         )}
         {page === 'create' && (
-          <CreateRoom onEnterLobby={(name) => {
+          <CreateRoom onEnterLobby={(name, s) => {
             const code = Math.random().toString(36).substring(2, 8).toUpperCase();
-            setLobby({ roomCode: code, players: [name || 'Host'], isHost: true });
+            setLobby({ roomCode: code, players: [name || 'Host'], isHost: true, settings: s || settings, hostId: undefined });
             setPage('lobby');
-          }} onBack={() => setPage('home')} />
+          }} settings={settings} onBack={() => setPage('home')} />
         )}
         {page === 'join' && (
           <JoinRoom onJoinLobby={(payload) => {
@@ -231,6 +264,7 @@ export default function App() {
             players={lobby.players}
             isHost={lobby.isHost}
             hostId={lobby.hostId}
+            settings={lobby.settings}
             playerName={lobby.players[0]}
             onLeave={() => { setPage('home'); setLobby(null); }}
             onStart={() => { setPage('game'); }}
