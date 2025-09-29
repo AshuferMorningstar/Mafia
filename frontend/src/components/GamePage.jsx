@@ -144,6 +144,26 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
     <div className="game-root page-lobby">
       <header className="lobby-main-header">
         <h1 className="lobby-hero-title welcome-title metallic-gradient">Mafia Game Room</h1>
+        <div className="lobby-roomcode" style={{marginTop:6}}>ROOM CODE: <span className="code-text">{roomCode}</span></div>
+        <div className="room-code-actions" style={{marginTop:8}}>
+          <button className="room-action-btn" onClick={doCopy} title="Copy room link" aria-label="Copy room link">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden>
+              <path d="M16 3H8a2 2 0 0 0-2 2v2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              <rect x="8" y="7" width="10" height="12" rx="2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M16 3v2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+          <button className="room-action-btn" onClick={doShare} title="Share room link" aria-label="Share room link">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden>
+              <circle cx="18" cy="5" r="2" stroke="currentColor" strokeWidth="1.6"/>
+              <circle cx="6" cy="12" r="2" stroke="currentColor" strokeWidth="1.6"/>
+              <circle cx="18" cy="19" r="2" stroke="currentColor" strokeWidth="1.6"/>
+              <path d="M8 12l8-5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M8 12l8 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+          <div className="room-action-status">{copyStatus || shareStatus || ''}</div>
+        </div>
         {/* Role panel: show assigned role and description */}
         <div className="role-panel" style={{marginTop:12, textAlign:'center'}}>
           <div style={{fontWeight:800, color:'#f3d7b0'}}>Your role:</div>
