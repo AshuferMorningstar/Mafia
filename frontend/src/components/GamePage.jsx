@@ -156,7 +156,10 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
                 'Detective': 'As a Detective, you can investigate one player to learn whether they are a Killer.',
                 'Civilian': 'As a Civilian, you have no special powers — collaborate and vote wisely.'
               };
-              return descriptions[role] || (role ? 'This role is private — only you can see it.' : 'Waiting for host to start the game...');
+              // If a known role exists, return its description.
+              // If role is present but not in the map, show a generic private-role message.
+              // If role is not assigned yet, don't show a "waiting" message here.
+              return descriptions[role] || (role ? 'This role is private — only you can see it.' : '');
             })()}
           </div>
         </div>
