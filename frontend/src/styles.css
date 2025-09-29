@@ -605,17 +605,17 @@ html, body, #root {
   max-width: 880px;
   margin: 10px auto 0 auto;
   box-sizing: border-box;
-  height: 22%;
-  min-height: 44px;
+  height: 24%;
+  min-height: 64px; /* larger so two lines fit */
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.06));
+  background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(0,0,0,0.07));
   border-radius: 12px;
-  padding: 10px 14px;
+  padding: 12px 16px;
   color: var(--muted);
-  border: 1px solid rgba(255,255,255,0.04);
-  box-shadow: 0 10px 26px rgba(0,0,0,0.36);
+  border: 1px solid rgba(255,255,255,0.05);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.42);
 }
 .role-notification-content { text-align:center }
 .role-notification-sub { font-size:0.85rem; color: rgba(243,198,198,0.9); margin-top:4px }
@@ -835,6 +835,8 @@ html, body, #root {
     max-width: 420px;
     margin-left: auto;
     margin-right: auto;
+    min-height: 72px;
+    padding: 12px 14px;
   }
 
   /* Limit the card body to allow internal scrolling without overflowing the viewport */
