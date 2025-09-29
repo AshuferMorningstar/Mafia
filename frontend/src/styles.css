@@ -777,6 +777,9 @@ html, body, #root {
   /* Hide the inline SETTINGS button on desktop because the side panel is available */
   .external-actions .lobby-action.settings { display: none; }
 
+  /* Reduce the large hero title on desktop so it doesn't dominate the header */
+  .lobby-hero-title { font-size: 1.9rem; }
+
   /* Make the inner card content scroll when the square card can't fit everything */
   .lobby-card-body { overflow: auto; min-height: 0; max-height: calc(100% - 140px); }
   .lobby-players-list { gap: 10px; }
