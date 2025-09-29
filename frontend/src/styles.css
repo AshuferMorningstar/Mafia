@@ -715,9 +715,17 @@ html, body, #root {
   /* Make the card and action buttons fit the available space (accounting for side panel)
      instead of using a hard 900px which can overflow on narrower desktop viewports. */
   .lobby-card{width: min(900px, calc(100vw - 260px)); max-width:98vw;}
+  /* Ensure header content lines up with the lobby card width */
+  .lobby-main-header { width: min(900px, calc(100vw - 260px)); max-width:98vw; margin: 0 auto; }
+  .lobby-main-header > .lobby-roomcode + div, .room-code-actions { width: min(900px, calc(100vw - 260px)); margin: 0 auto; }
   .external-actions{width: min(900px, calc(100vw - 260px)); max-width:98vw;padding:0 8px}
   .external-actions{margin-top:28px}
   .external-actions .lobby-action{padding:14px 16px}
+
+  /* Center the external action buttons under the card and make them share available width */
+  .external-actions { margin-left: auto; margin-right: auto; justify-content: space-between; }
+  .external-actions .lobby-action { flex: 1 1 0; min-width: 180px; max-width: calc((min(900px, calc(100vw - 260px)) - 24px) / 2); }
+  .external-actions .lobby-action + .lobby-action { margin-left: 16px; }
 
   /* Desktop tweak: reduce vertical space above header so icons don't overflow the card
      and ensure the card and action buttons still sit below the header. */

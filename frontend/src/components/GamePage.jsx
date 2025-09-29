@@ -4,6 +4,7 @@ import '../styles.css';
 export default function GamePage({ roomCode, players = [], role = null, onExit = () => {} }) {
   const [copyStatus, setCopyStatus] = useState('');
   const [shareStatus, setShareStatus] = useState('');
+  const [activeTab, setActiveTab] = useState('players');
 
   const shareUrl = (() => {
     try { return `${window.location.origin}${window.location.pathname}?room=${roomCode}`; } catch (e) { return roomCode; }
@@ -50,7 +51,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
   return (
     <div className="game-root page-lobby">
       <header className="lobby-main-header">
-        <h1 className="lobby-hero-title welcome-title metallic-gradient">Mafia</h1>
+        <h1 className="lobby-hero-title welcome-title metallic-gradient">Mafia Game Room</h1>
         <p className="lobby-hero-sub welcome-sub metallic-gradient">A thrilling game of deception and strategy</p>
         <div className="lobby-roomcode">ROOM CODE: <span className="code-text">{roomCode}</span></div>
         <div className="room-code-actions">
@@ -76,43 +77,40 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
 
       <main className="lobby-card">
         <div className="lobby-card-top">
-          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:12}}>
-            <div style={{display:'flex',flexDirection:'column'}}>
-              <div style={{fontWeight:800,color:'#f3d7b0'}}>Your role:</div>
-              <div style={{fontSize:18,fontWeight:800}}>{role || 'Unassigned'}</div>
-              <div style={{color:'var(--muted)'}}>{role ? 'This role is private — only you can see it.' : 'Waiting for host to start the game...'}</div>
-            </div>
-            <div style={{textAlign:'right'}}>
-              <div style={{fontWeight:700}}>Speaker: <span style={{fontWeight:900}}>{players[0] || 'TBD'}</span></div>
-              <div style={{marginTop:8}} className="room-meta">☀️ 5:00&nbsp;&nbsp;🌙 {players.length} Alive | 0 Dead</div>
-            </div>
-          </div>
+          <nav className="lobby-tabs" role="tablist">
+            <button className={`lobby-tab ${activeTab === 'players' ? 'active' : ''}`} onClick={() => setActiveTab('players')}>PLAYERS</button>
+            <button className={`lobby-tab ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}>CHAT LOBBY</button>
+          </nav>
         </div>
 
-        <section className="lobby-card-body">
-          <div style={{display:'flex',gap:12,flexDirection:'column'}}>
-            <div style={{display:'flex',gap:12,flexDirection:'row',flexWrap:'wrap'}}>
-              <div style={{flex:1,minWidth:180}} className="panel">
-                <div className="panel-header">PLAYERS</div>
-                <ul className="lobby-players-list">
-                  {players.map((p,i) => <li className="lobby-player-item" key={`${p}-${i}`}>{p}</li>)}
-                </ul>
-              </div>
-
-              <div style={{flex:2,minWidth:220}} className="panel">
-                <div className="panel-header">CHAT LOBBY</div>
-                <div className="chat-messages" style={{minHeight:120}}>Chat and game feed will appear here.</div>
-                <div className="chat-input-row" style={{marginTop:8}}>
-                  <input id="game-chat-input" name="chatMessage" aria-label="Type a message" className="chat-input" placeholder="Type a message..." />
-                  <button className="chat-send">Send</button>
+        <section className="lobby-card-body" style={activeTab === 'chat' ? {display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0} : {}}>
+          {activeTab === 'players' ? (
+            <ul className="lobby-players-list">
+              {players.map((p, i) => (
+                <li key={`${p}-${i}`} className="lobby-player-item">{p}</li>
+              ))}
+            </ul>
+          ) : (
+            <>
+              <div style={{flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', minHeight: 0}}>
+                <div className="lobby-chat-placeholder">Chat will appear here</div>
+                <div className="chat-messages" id="game-chat-messages">
+                  {/* messages will appear here in future */}
                 </div>
               </div>
-            </div>
-          </div>
+            </>
+          )}
         </section>
+
+        {activeTab === 'chat' && (
+          <div className="chat-input-row chat-input-bottom">
+            <input id="game-chat-input" name="chatMessage" aria-label="Type a message" className="chat-input" placeholder="Type a message..." style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ccc', marginRight: '8px' }} />
+            <button className="chat-send-btn" style={{ padding: '10px 18px', borderRadius: '8px', background: '#f6d27a', color: '#2b1f12', fontWeight: 700, border: 'none', cursor: 'pointer' }}>Send</button>
+          </div>
+        )}
       </main>
 
-      <div className="external-actions" style={{maxWidth: 'min(820px,98vw)'}}>
+      <div className="external-actions">
         <button className="lobby-action start">VOTE</button>
         <button className="lobby-action close" onClick={onExit}>LEAVE THE ROOM</button>
       </div>
