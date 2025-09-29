@@ -8,6 +8,7 @@ import time
 
 # import python-socketio ASGI
 import socketio
+import asyncio
 
 
 app = FastAPI()
@@ -138,6 +139,14 @@ async def handle_join(sid, data):
     player = data.get('player')
     if not room or not player:
         return
+    meta = _room_meta.setdefault(room, {})
+    # If a game is already in progress, reject new joins (per new rules)
+    if meta.get('in_game'):
+        try:
+            await sio.emit('join_rejected', {'message': 'Game already in progress'}, room=sid)
+        except Exception:
+            pass
+        return
     # add player to in-memory room list
     lst = _rooms.setdefault(room, [])
     # avoid duplicates
@@ -145,6 +154,14 @@ async def handle_join(sid, data):
         lst.append(player)
     # ensure room metadata exists
     meta = _room_meta.setdefault(room, {})
+    # map player id -> sid so we can send private messages later
+    sids = meta.setdefault('player_sids', {})
+    try:
+        pid = player.get('id')
+        if pid:
+            sids[pid] = sid
+    except Exception:
+        pass
     # if no host assigned yet, the first player becomes host
     if not meta.get('host_id'):
         meta['host_id'] = player.get('id')
@@ -177,12 +194,467 @@ async def handle_leave(sid, data):
 async def handle_message(sid, data):
     room = data.get('roomId')
     message = data.get('message')
-    if room and message:
+    # Messages can include an optional `scope` field: 'public' (default), 'killers', 'doctors'
+    scope = data.get('scope') or 'public'
+    if not room or not message:
+        return
+    meta = _room_meta.get(room, {})
+    phase = meta.get('phase')
+
+    # Night restrictions: public chat is locked during night
+    if phase and phase.startswith('night'):
+        if scope == 'public':
+            # public chat is closed during night
+            try:
+                await sio.emit('chat_blocked', {'message': 'Public chat is closed during night'}, room=sid)
+            except Exception:
+                pass
+            return
+        elif scope == 'killers':
+            # emit only to killer private room
+            kr = meta.get('killer_room')
+            if kr:
+                await sio.emit('new_message', {'message': message}, room=kr)
+            return
+        elif scope == 'doctors':
+            dr = meta.get('doctor_room')
+            if dr:
+                await sio.emit('new_message', {'message': message}, room=dr)
+            return
+
+    # Daytime or public messages: save and broadcast publicly
+    try:
+        save_message(room, message)
+    except Exception:
+        pass
+    await sio.emit('new_message', {'message': message}, room=room)
+
+
+def _assign_roles_to_players(players, settings, seed=None):
+    import random
+    rnd = random.Random(seed)
+    total_players = len(players)
+    roles = []
+    # Add killers
+    k = int(settings.get('killCount', 1)) if settings else 1
+    roles += ['Killer'] * min(k, total_players)
+    # Doctors
+    d = int(settings.get('doctorCount', 0)) if settings else 0
+    roles += ['Doctor'] * min(d, max(0, total_players - len(roles)))
+    # Detectives
+    det = int(settings.get('detectiveCount', 0)) if settings else 0
+    roles += ['Detective'] * min(det, max(0, total_players - len(roles)))
+    # Remaining civilians
+    remaining = total_players - len(roles)
+    roles += ['Civilian'] * max(0, remaining)
+    rnd.shuffle(roles)
+    assigned = []
+    for p, r in zip(players, roles):
+        np = dict(p)
+        np['role'] = r
+        assigned.append(np)
+    return assigned
+
+
+@sio.on('set_settings')
+async def handle_set_settings(sid, data):
+    room = data.get('roomId')
+    settings = data.get('settings')
+    if not room or not isinstance(settings, dict):
+        return
+    meta = _room_meta.setdefault(room, {})
+    meta['settings'] = settings
+    await sio.emit('settings_updated', {'settings': settings}, room=room)
+
+
+@sio.on('player_ready')
+async def handle_player_ready(sid, data):
+    """Mark a player as ready. When all current players are ready, assign roles and start the game."""
+    room = data.get('roomId')
+    player = data.get('player')
+    if not room or not player:
+        return
+    meta = _room_meta.setdefault(room, {})
+    ready = meta.setdefault('ready', {})
+    pid = player.get('id')
+    if not pid:
+        return
+    ready[pid] = True
+    # broadcast ready state to room (list of ready player ids)
+    await sio.emit('ready_state', {'ready': list(ready.keys())}, room=room)
+
+    # Check if all current lobby players are ready
+    players = _rooms.get(room, [])
+    player_ids = [p.get('id') for p in players]
+    all_ready = all((pid in ready and ready.get(pid)) for pid in player_ids) and len(player_ids) > 0
+    if all_ready:
+        # schedule a non-blocking start sequence: countdown, assign roles, deliver roles privately, then begin night/day orchestration
+        async def start_sequence():
+            meta = _room_meta.setdefault(room, {})
+            # small countdown (3..1) emitted each second so clients can show it
+            try:
+                for sec in (3, 2, 1):
+                    await sio.emit('prestart_countdown', {'seconds': sec}, room=room)
+                    await asyncio.sleep(1)
+            except Exception:
+                pass
+
+            # assign roles according to host settings stored in meta
+            settings = meta.get('settings', {})
+            assigned = _assign_roles_to_players(players, settings)
+            # store assigned roles in meta and mark in-game
+            meta['assigned_roles'] = {p.get('id'): p.get('role') for p in assigned}
+            meta['in_game'] = True
+            meta['phase'] = 'pre_night'
+            meta['eliminated'] = meta.get('eliminated', {})
+
+            # prepare private rooms for killers and doctors
+            killer_room = f"{room}__killers"
+            doctor_room = f"{room}__doctors"
+            meta['killer_room'] = killer_room
+            meta['doctor_room'] = doctor_room
+
+            # send private role and instructions to each player using stored sids
+            sids = meta.get('player_sids', {})
+            role_descriptions = {
+                'Killer': 'Secretly selects one player to eliminate each night. Killers know each other and coordinate in private chat.',
+                'Doctor': 'Each night chooses one player to protect from being eliminated. If you save the targeted player, they survive the night.',
+                'Detective': 'Can investigate one player to learn if they are a Killer. Use this information wisely and avoid revealing too early.',
+                'Civilian': 'No special powers. Participate in discussion and voting to identify Killers.'
+            }
+            for p in assigned:
+                pid = p.get('id')
+                psid = sids.get(pid)
+                if psid:
+                    try:
+                        # send role and description privately
+                        await sio.emit('your_role', {'role': p.get('role'), 'description': role_descriptions.get(p.get('role'))}, room=psid)
+                        # server-side: place killers/doctors into private rooms so server can emit to them
+                        if p.get('role') == 'Killer':
+                            try:
+                                await sio.enter_room(psid, killer_room)
+                            except Exception:
+                                pass
+                        if p.get('role') == 'Doctor':
+                            try:
+                                await sio.enter_room(psid, doctor_room)
+                            except Exception:
+                                pass
+                    except Exception as e:
+                        print(f"[player_ready] error sending role to {pid}: {e}")
+
+            # broadcast roles assigned (public roster only)
+            public_players = [{'id': p.get('id'), 'name': p.get('name')} for p in assigned]
+            await sio.emit('roles_assigned', {'players': public_players, 'role_descriptions': role_descriptions}, room=room)
+
+            # short pause to allow client to show role card, then start night
+            await asyncio.sleep(3)
+            # start night
+            await _start_night_sequence(room)
+
+        # schedule the start sequence without blocking the event loop
+        asyncio.create_task(start_sequence())
+
+
+async def _start_night_sequence(room: str):
+    """Orchestrate night phases: announce night, run killer phase, run doctor phase, resolve night, then start day and voting."""
+    meta = _room_meta.setdefault(room, {})
+    meta['phase'] = 'night_start'
+    await sio.emit('phase', {'phase': 'night_start', 'message': "It's night — close your eyes."}, room=room)
+    # wait 3s then start killer phase
+    await asyncio.sleep(3)
+    await _start_killer_phase(room)
+
+
+async def _start_killer_phase(room: str, duration: int = 120):
+    meta = _room_meta.setdefault(room, {})
+    meta['phase'] = 'killer'
+    meta['night_kill'] = None
+    # notify killers to open eyes and act
+    await sio.emit('phase', {'phase': 'killer', 'message': 'Killer, open your eyes and choose a target', 'duration': duration}, room=meta.get('killer_room'))
+
+    async def killer_timer():
         try:
-            save_message(room, message)
-        except Exception:
-            pass
-        await sio.emit('new_message', {'message': message}, room=room)
+            await asyncio.sleep(duration)
+        except asyncio.CancelledError:
+            return
+        # timer expired, proceed to doctor phase
+        await _start_doctor_phase(room)
+
+    task = asyncio.create_task(killer_timer())
+    meta['killer_task'] = task
+
+
+@sio.on('killer_action')
+async def handle_killer_action(sid, data):
+    room = data.get('roomId')
+    player = data.get('player')
+    target_id = data.get('targetId')
+    if not room or not player or not target_id:
+        return
+    meta = _room_meta.setdefault(room, {})
+    # only accept during killer phase
+    if meta.get('phase') != 'killer':
+        return
+    pid = player.get('id')
+    assigned = meta.get('assigned_roles', {})
+    if assigned.get(pid) != 'Killer':
+        return
+    # record the chosen kill and cancel killer timer for early move to doctor
+    meta['night_kill'] = target_id
+    task = meta.pop('killer_task', None)
+    if task and not task.done():
+        task.cancel()
+    await _start_doctor_phase(room)
+
+
+async def _start_doctor_phase(room: str, duration: int = 120):
+    meta = _room_meta.setdefault(room, {})
+    meta['phase'] = 'doctor'
+    meta['doctor_save'] = None
+    # notify doctors to open eyes and act
+    await sio.emit('phase', {'phase': 'doctor', 'message': 'Doctor, choose someone to save', 'duration': duration}, room=meta.get('doctor_room'))
+
+    async def doctor_timer():
+        try:
+            await asyncio.sleep(duration)
+        except asyncio.CancelledError:
+            return
+        # timer expired, resolve night
+        await _resolve_night_and_start_day(room)
+
+    task = asyncio.create_task(doctor_timer())
+    meta['doctor_task'] = task
+
+
+@sio.on('doctor_action')
+async def handle_doctor_action(sid, data):
+    room = data.get('roomId')
+    player = data.get('player')
+    target_id = data.get('targetId')
+    if not room or not player or not target_id:
+        return
+    meta = _room_meta.setdefault(room, {})
+    if meta.get('phase') != 'doctor':
+        return
+    pid = player.get('id')
+    assigned = meta.get('assigned_roles', {})
+    if assigned.get(pid) != 'Doctor':
+        return
+    meta['doctor_save'] = target_id
+    task = meta.pop('doctor_task', None)
+    if task and not task.done():
+        task.cancel()
+    await _resolve_night_and_start_day(room)
+
+
+@sio.on('detective_action')
+async def handle_detective_action(sid, data):
+    room = data.get('roomId')
+    player = data.get('player')
+    target_id = data.get('targetId')
+    if not room or not player or not target_id:
+        return
+    meta = _room_meta.setdefault(room, {})
+    # only accept during detective phase (we'll treat detective action during night while phase in 'killer' or 'doctor')
+    # allow detective to act anytime during night phases
+    if meta.get('phase') not in ('killer', 'doctor', 'night_start', 'pre_night'):
+        return
+    pid = player.get('id')
+    assigned = meta.get('assigned_roles', {})
+    if assigned.get(pid) != 'Detective':
+        return
+    # Determine if target is a killer
+    role = assigned.get(target_id)
+    is_killer = (role == 'Killer')
+    # send result privately to detective
+    sids = meta.get('player_sids', {})
+    psid = sids.get(pid)
+    try:
+        await sio.emit('detective_result', {'targetId': target_id, 'is_killer': is_killer, 'role': role}, room=psid)
+    except Exception:
+        pass
+
+
+async def _resolve_night_and_start_day(room: str):
+    meta = _room_meta.setdefault(room, {})
+    killed = meta.get('night_kill')
+    saved = meta.get('doctor_save')
+    killed_player = None
+    saved_player = None
+
+    # find player objects
+    players = _rooms.get(room, [])
+    id_to_player = {p.get('id'): p for p in players}
+    if killed:
+        killed_player = id_to_player.get(killed)
+    if saved:
+        saved_player = id_to_player.get(saved)
+
+    # determine outcome
+    outcome = {}
+    if killed and saved and killed == saved:
+        # doctor saved the victim
+        outcome['result'] = 'saved'
+        outcome['player'] = saved_player
+    elif killed:
+        outcome['result'] = 'killed'
+        outcome['player'] = killed_player
+    else:
+        outcome['result'] = 'none'
+        outcome['player'] = None
+
+    # broadcast night resolution to all players
+    if outcome['result'] == 'killed' and outcome['player']:
+        await sio.emit('night_result', {'result': 'killed', 'player': {'id': outcome['player'].get('id'), 'name': outcome['player'].get('name'), 'role': meta.get('assigned_roles', {}).get(outcome['player'].get('id'))}}, room=room)
+        # remove killed player from active players
+        _rooms[room] = [p for p in players if p.get('id') != outcome['player'].get('id')]
+        # mark eliminated
+        meta.setdefault('eliminated', {})[outcome['player'].get('id')] = True
+    elif outcome['result'] == 'saved' and outcome['player']:
+        await sio.emit('night_result', {'result': 'saved', 'player': {'id': outcome['player'].get('id'), 'name': outcome['player'].get('name')}}, room=room)
+    else:
+        await sio.emit('night_result', {'result': 'none'}, room=room)
+
+    # cleanup private rooms tasks
+    try:
+        kt = meta.pop('killer_task', None)
+        if kt and not kt.done():
+            kt.cancel()
+    except Exception:
+        pass
+    try:
+        dt = meta.pop('doctor_task', None)
+        if dt and not dt.done():
+            dt.cancel()
+    except Exception:
+        pass
+
+    # start day after small pause
+    meta['phase'] = 'day'
+    await sio.emit('phase', {'phase': 'day', 'message': 'Day has begun — discuss and then vote'}, room=room)
+
+    # allow public chat again; send updated room state and players list
+    await sio.emit('room_state', {'players': _rooms.get(room, []), 'host_id': meta.get('host_id')}, room=room)
+
+    # start voting phase automatically after a short discussion window (optional)
+    # For simplicity, immediately start voting — clients can delay locally if desired
+    await _start_voting_phase(room)
+    # Check win conditions after night resolution (example simple checks)
+    await _check_win_conditions(room)
+
+
+async def _start_voting_phase(room: str, duration: int = 120):
+    meta = _room_meta.setdefault(room, {})
+    meta['phase'] = 'voting'
+    meta['votes'] = {}
+    await sio.emit('phase', {'phase': 'voting', 'message': 'Cast your vote: who do you think is a killer?', 'duration': duration}, room=room)
+
+    async def voting_timer():
+        try:
+            await asyncio.sleep(duration)
+        except asyncio.CancelledError:
+            return
+        await _resolve_votes(room)
+
+    task = asyncio.create_task(voting_timer())
+    meta['voting_task'] = task
+
+
+@sio.on('cast_vote')
+async def handle_cast_vote(sid, data):
+    room = data.get('roomId')
+    voter = data.get('player')
+    target = data.get('targetId')
+    if not room or not voter or not target:
+        return
+    meta = _room_meta.setdefault(room, {})
+    if meta.get('phase') != 'voting':
+        return
+    vid = voter.get('id')
+    meta.setdefault('votes', {})[vid] = target
+    # optional early resolution: if all alive players have voted, resolve early
+    alive = _rooms.get(room, [])
+    alive_ids = [p.get('id') for p in alive]
+    if all((a in meta.get('votes', {})) for a in alive_ids):
+        task = meta.pop('voting_task', None)
+        if task and not task.done():
+            task.cancel()
+        await _resolve_votes(room)
+
+
+async def _resolve_votes(room: str):
+    meta = _room_meta.setdefault(room, {})
+    votes = meta.get('votes', {})
+    # count votes
+    counts = {}
+    for v in votes.values():
+        counts[v] = counts.get(v, 0) + 1
+    if not counts:
+        await sio.emit('vote_result', {'result': 'no_votes'}, room=room)
+        meta['phase'] = 'post_vote'
+        return
+    # find max
+    max_votes = max(counts.values())
+    top = [pid for pid, c in counts.items() if c == max_votes]
+    eliminated = None
+    if len(top) == 1:
+        eliminated = top[0]
+    else:
+        # tie: no elimination (could randomize if desired)
+        eliminated = None
+
+    if eliminated:
+        # find player object
+        players = _rooms.get(room, [])
+        eliminated_player = next((p for p in players if p.get('id') == eliminated), None)
+        if eliminated_player:
+            role = meta.get('assigned_roles', {}).get(eliminated)
+            # remove from active players
+            _rooms[room] = [p for p in players if p.get('id') != eliminated]
+            meta.setdefault('eliminated', {})[eliminated] = True
+            await sio.emit('vote_result', {'result': 'eliminated', 'player': {'id': eliminated_player.get('id'), 'name': eliminated_player.get('name'), 'role': role}}, room=room)
+            meta['phase'] = 'post_vote'
+            # after elimination, you may want to check win conditions (not implemented)
+            # check win conditions after elimination
+            await _check_win_conditions(room)
+            return
+    # no elimination
+    await sio.emit('vote_result', {'result': 'no_elimination', 'top': top, 'counts': counts}, room=room)
+    meta['phase'] = 'post_vote'
+
+
+async def _check_win_conditions(room: str):
+    """Simple win checks: if all killers are dead -> Civilians win; if killers >= civilians -> Killers win."""
+    meta = _room_meta.setdefault(room, {})
+    players = _rooms.get(room, [])
+    assigned = meta.get('assigned_roles', {})
+    # count alive roles
+    alive_roles = {'Killer': 0, 'Civilian': 0, 'Doctor': 0, 'Detective': 0}
+    for p in players:
+        rid = p.get('id')
+        r = assigned.get(rid) or 'Civilian'
+        if r in alive_roles:
+            alive_roles[r] += 1
+        else:
+            alive_roles['Civilian'] += 1
+
+    killers = alive_roles.get('Killer', 0)
+    civilians = alive_roles.get('Civilian', 0) + alive_roles.get('Doctor', 0) + alive_roles.get('Detective', 0)
+
+    if killers == 0:
+        # civilians win
+        await sio.emit('game_over', {'winner': 'Civilians'}, room=room)
+        meta['phase'] = 'ended'
+        meta['in_game'] = False
+        return
+    if killers >= civilians:
+        # killers win
+        await sio.emit('game_over', {'winner': 'Killers'}, room=room)
+        meta['phase'] = 'ended'
+        meta['in_game'] = False
+        return
+
 
 
 @app.get('/rooms/{room_id}/messages')

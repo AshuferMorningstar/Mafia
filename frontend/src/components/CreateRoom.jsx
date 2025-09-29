@@ -17,7 +17,7 @@ export default function CreateRoom({ onEnterLobby, onBack, settings = {} }) {
             <input id="player-name" value={name} onChange={e => setName(e.target.value)} type="text" placeholder="Your name" style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(0,0,0,0.12)', marginBottom: 16 }} />
 
             <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <button className="welcome-start" disabled={!name.trim()} onClick={() => onEnterLobby(name.trim(), settings)} style={{ width: '100%' }}>Enter Game Lobby</button>
+              <button className="welcome-start" disabled={!name.trim()} onClick={() => onEnterLobby(name.trim(), settings)} style={{ width: '100%' }}>Enter Game</button>
             </div>
           </div>
         </div>

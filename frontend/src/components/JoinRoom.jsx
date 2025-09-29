@@ -23,7 +23,7 @@ export default function JoinRoom({ onJoinLobby, onBack }) {
             <input id="room-code" value={code} onChange={e => setCode(e.target.value)} type="text" placeholder="ABCD" style={{ width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(0,0,0,0.12)', marginBottom: 16 }} />
 
             <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <button className="welcome-start" disabled={!canJoin} onClick={() => onJoinLobby && onJoinLobby({ name: name.trim(), code: code.trim() })} style={{ width: '100%' }}>Join Game Lobby</button>
+              <button className="welcome-start" disabled={!canJoin} onClick={() => onJoinLobby && onJoinLobby({ name: name.trim(), code: code.trim() })} style={{ width: '100%' }}>Join Game</button>
             </div>
           </div>
         </div>

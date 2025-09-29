@@ -261,14 +261,14 @@ export default function App() {
           <CreateRoom onEnterLobby={(name, s) => {
             const code = Math.random().toString(36).substring(2, 8).toUpperCase();
             setLobby({ roomCode: code, players: [name || 'Host'], isHost: true, settings: s || settings, hostId: undefined });
-            setPage('lobby');
+            setPage('game');
           }} settings={settings} onBack={() => setPage('home')} />
         )}
         {page === 'join' && (
           <JoinRoom onJoinLobby={(payload) => {
             const { name, code } = payload || {};
             setLobby({ roomCode: code || '????', players: [name || 'Player'], isHost: false });
-            setPage('lobby');
+            setPage('game');
           }} onBack={() => setPage('home')} />
         )}
         {page === 'lobby' && lobby && (

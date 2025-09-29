@@ -930,3 +930,99 @@ html, body, #root {
   color: var(--muted);
   text-align: center;
 }
+
+/* Role modal (private role reveal) -------------------------------------------------- */
+.role-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000; /* above sliding panels and other UI */
+}
+.role-modal {
+  position: relative;
+  width: min(560px, 92vw);
+  background: linear-gradient(180deg, #1b0a0e 0%, #260812 100%);
+  color: var(--text);
+  padding: 20px 22px;
+  border-radius: 12px;
+  box-shadow: 0 18px 60px rgba(0,0,0,0.6);
+  border: 1px solid rgba(255,255,255,0.04);
+  text-align: center;
+}
+.role-modal .role-icon {
+  width: 84px;
+  height: 84px;
+  margin: 6px auto 12px auto;
+  display: block;
+  object-fit: contain;
+}
+.role-modal .role-title {
+  font-family: 'Great Vibes', cursive;
+  font-size: 2.1rem;
+  margin: 0 0 6px 0;
+  color: var(--accent);
+}
+.role-modal .role-desc {
+  font-size: 1rem;
+  color: var(--muted);
+  margin: 6px 0 12px 0;
+  line-height: 1.35;
+}
+.role-modal .role-close {
+  position: absolute;
+  right: 12px;
+  top: 10px;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 1.05rem;
+  padding: 6px;
+  cursor: pointer;
+}
+
+/* Visual for eliminated players in lists */
+.player-eliminated {
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+
+/* Small badges used next to player names (host / ready) */
+.player-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.player-badge.host {
+  background: linear-gradient(90deg, #ffd27a 0%, #b07a2a 100%);
+  color: #2b1f12;
+}
+.player-badge.ready {
+  background: rgba(76,175,80,0.12);
+  color: #b8ffcf;
+  border: 1px solid rgba(76,175,80,0.09);
+}
+
+/* Notification animation: subtle fade and upward slide */
+@keyframes notif-fade-up {
+  0% { opacity: 0; transform: translateY(6px); }
+  60% { opacity: 1; transform: translateY(-2px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.notif-animate {
+  animation: notif-fade-up 420ms cubic-bezier(.2,.9,.2,1);
+}
+.role-notification-card {
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+@media (max-width: 640px) {
+  .role-modal { width: min(460px, 92vw); padding: 16px; }
+  .role-modal .role-title { font-size: 1.8rem }
+}

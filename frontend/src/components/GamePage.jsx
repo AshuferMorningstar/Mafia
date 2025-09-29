@@ -13,6 +13,22 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
     meRef.current = players && players[0] ? { id: generated.id, name: players[0] } : generated;
   }
   const [messages, setMessages] = useState([]);
+  const [readyState, setReadyState] = useState([]);
+  const [amReady, setAmReady] = useState(false);
+  const [prestartCountdown, setPrestartCountdown] = useState(null);
+  const [myRole, setMyRole] = useState(role || null);
+  const [roleDescription, setRoleDescription] = useState('');
+  const [notificationText, setNotificationText] = useState(null);
+  const persistentPhases = ['night_start', 'killer', 'doctor', 'day', 'voting'];
+  const [phase, setPhase] = useState(null);
+  const [phaseDuration, setPhaseDuration] = useState(null);
+  const [phaseRemaining, setPhaseRemaining] = useState(null);
+  const [inGame, setInGame] = useState(false);
+  const [targetId, setTargetId] = useState(null);
+  const [voteTarget, setVoteTarget] = useState(null);
+  const [eliminatedIds, setEliminatedIds] = useState([]);
+  const [notifKey, setNotifKey] = useState(0);
+  const [hostId, setHostId] = useState(null);
   const inputRef = useRef(null);
 
   const shareUrl = (() => {
@@ -89,6 +105,12 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
           return false;
         });
         if (exists) return prev;
+        // if this is a System message, surface it in the notification area unless we are in a persistent phase
+        if (message?.from?.name === 'System' && message?.text) {
+          if (!persistentPhases.includes(phase) && prestartCountdown == null) {
+            setNotificationText(message.text);
+          }
+        }
         return [...prev, message];
       });
     };
@@ -109,6 +131,26 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
       });
     };
 
+    const handleReadyState = (data) => {
+      const list = data?.ready || [];
+      setReadyState(list);
+    };
+
+    socket.off('room_state');
+    socket.on('room_state', (d) => {
+      setPlayerList(d?.players || playerList);
+      setHostId(d?.host_id || null);
+    });
+
+    socket.off('game_over');
+    socket.on('game_over', (d) => {
+      if (!d) return;
+      const text = `Game over! Winner: ${d.winner}`;
+      setNotificationText(text);
+      setMessages((prev) => [...prev, { id: `gameover-${Date.now()}`, from: { name: 'System' }, text }]);
+      setPhase('ended');
+    });
+
     const handlePlayerLeft = (data) => {
       const leaving = data?.player;
       if (!leaving) return;
@@ -124,11 +166,134 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
     socket.on('new_message', handleNewMessage);
     socket.on('player_joined', handlePlayerJoined);
     socket.on('player_left', handlePlayerLeft);
+    socket.on('ready_state', handleReadyState);
+    socket.on('game_started', (data) => {
+      const publicPlayers = data?.players || [];
+      setPlayerList(publicPlayers);
+    });
+
+    socket.off('prestart_countdown');
+    socket.on('prestart_countdown', (d) => {
+      const sec = d?.seconds ?? null;
+      setPrestartCountdown(sec);
+      if (sec != null) setNotificationText(`Game starting in ${sec}...`);
+    });
+
+    socket.off('your_role');
+    socket.on('your_role', (d) => {
+      if (!d) return;
+      // directly assign role to the inline role panel (no popup modal)
+      setMyRole(d.role);
+      setRoleDescription(d.description || '');
+      // clear transient notifications now that the role is assigned
+      setNotificationText(null);
+      setPrestartCountdown(null);
+      // once role is assigned, we no longer need to show the Ready waiting text
+      setAmReady(false);
+    });
+
+    socket.off('roles_assigned');
+    socket.on('roles_assigned', (d) => {
+      const publicPlayers = d?.players || [];
+      setPlayerList(publicPlayers);
+      // roles have been assigned publicly — clear old notifications
+      setNotificationText(null);
+      setPrestartCountdown(null);
+      setAmReady(false);
+      // mark the client as in-game so lobby controls are hidden
+      setInGame(true);
+    });
+
+    socket.off('phase');
+    socket.on('phase', (d) => {
+      if (!d) return;
+      const p = d.phase;
+      setPhase(p);
+      setPhaseDuration(d.duration || null);
+      setPhaseRemaining(d.duration || null);
+      const text = d.message || `Phase: ${p}`;
+      // For certain phases we want explicit public wording and to ensure all clients see it
+      if (p === 'killer') {
+        setNotificationText('Night has fallen — Killers, choose your target.');
+        setInGame(true);
+      } else if (p === 'doctor') {
+        setNotificationText('Doctor: choose someone to save.');
+        setInGame(true);
+      } else if (persistentPhases.includes(p)) {
+        // keep this text as the persistent notification for other persistent phases
+        setNotificationText(text);
+        setInGame(true);
+      } else {
+        // otherwise set transient notification
+        setNotificationText(text);
+      }
+      setMessages((prev) => [...prev, { id: `phase-${Date.now()}`, from: { name: 'System' }, text }]);
+      if (p === 'day') {
+        setMessages((prev) => prev.filter((m) => !m.scope || m.scope === 'public'));
+      }
+    });
+
+    socket.off('night_result');
+    socket.on('night_result', (d) => {
+      if (!d) return;
+      let text = '';
+      if (d.result === 'killed') {
+        text = `${d.player.name} was killed last night.`;
+      } else if (d.result === 'saved') {
+        text = `${d.player.name} was saved by the Doctor last night.`;
+      } else {
+        text = `No one was killed last night.`;
+      }
+      setNotificationText(text);
+      setMessages((prev) => [...prev, { id: `night-${Date.now()}`, from: { name: 'System' }, text }]);
+      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/rooms/${roomCode}/players`)
+        .then((r) => r.json())
+        .then((d) => setPlayerList(d.players || playerList))
+        .catch(() => {});
+      // update eliminated list if provided
+      try {
+        if (d?.player) {
+          const pid = d.player.id;
+          if (d.result === 'killed') setEliminatedIds((s) => Array.from(new Set([...s, pid])));
+        }
+      } catch (e) {}
+    });
+
+    socket.off('detective_result');
+    socket.on('detective_result', (d) => {
+      if (!d) return;
+      const text = d.is_killer ? `Investigation: target is a KILLER` : `Investigation: target is NOT a killer (role: ${d.role})`;
+      setNotificationText(text);
+      setMessages((prev) => [...prev, { id: `detective-${Date.now()}`, from: { name: 'Detective' }, text }]);
+    });
+
+    socket.off('vote_result');
+    socket.on('vote_result', (d) => {
+      if (!d) return;
+      let text = '';
+      if (d.result === 'eliminated') {
+        text = `${d.player.name} was eliminated by vote. Role: ${d.player.role}`;
+      } else if (d.result === 'no_elimination') {
+        text = `No elimination (tie or no votes).`;
+      } else if (d.result === 'no_votes') {
+        text = `No votes were cast.`;
+      }
+      setNotificationText(text);
+      setMessages((prev) => [...prev, { id: `vote-${Date.now()}`, from: { name: 'System' }, text }]);
+      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/rooms/${roomCode}/players`)
+        .then((r) => r.json())
+        .then((d) => setPlayerList(d.players || playerList))
+        .catch(() => {});
+      try {
+        if (d?.player && d.result === 'eliminated') setEliminatedIds((s) => Array.from(new Set([...s, d.player.id])));
+      } catch (e) {}
+    });
 
     return () => {
       socket.off('new_message', handleNewMessage);
       socket.off('player_joined', handlePlayerJoined);
       socket.off('player_left', handlePlayerLeft);
+      socket.off('ready_state', handleReadyState);
       socket.emit('leave_room', { roomId: roomCode, player: me });
       socket.disconnect();
     };
@@ -139,6 +304,41 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
     const el = document.getElementById('chat-messages');
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
+
+  useEffect(() => {
+    if (!phase || !phaseDuration) {
+      setPhaseRemaining(null);
+      return;
+    }
+    setPhaseRemaining(phaseDuration);
+    const iv = setInterval(() => {
+      setPhaseRemaining((r) => {
+        if (r == null) return null;
+        if (r <= 1) {
+          clearInterval(iv);
+          return 0;
+        }
+        return r - 1;
+      });
+    }, 1000);
+    return () => clearInterval(iv);
+  }, [phase, phaseDuration]);
+
+  // auto-clear notification after a while, but keep countdown visible if active
+  useEffect(() => {
+    if (!notificationText) return;
+    // keep countdown notifications visible
+    if (prestartCountdown != null) return;
+    // do not auto-clear if we are in a persistent phase
+    if (phase && persistentPhases.includes(phase)) return;
+    const t = setTimeout(() => setNotificationText(null), 8000);
+    return () => clearTimeout(t);
+  }, [notificationText, prestartCountdown, phase]);
+
+  // bump notifKey when visible notification content changes so animation re-triggers
+  useEffect(() => {
+    setNotifKey((k) => k + 1);
+  }, [notificationText, prestartCountdown, phase]);
 
   return (
     <div className="game-root page-lobby">
@@ -167,7 +367,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
         {/* Role panel: show assigned role and description */}
         <div className="role-panel" style={{marginTop:12, textAlign:'center'}}>
           <div style={{fontWeight:800, color:'#f3d7b0'}}>Your role:</div>
-          <div style={{fontSize:20, fontWeight:900, marginTop:6}}>{role || 'Unassigned'}</div>
+          <div style={{fontSize:20, fontWeight:900, marginTop:6}}>{myRole || 'Unassigned'}</div>
           <div style={{marginTop:8, color:'var(--muted)', maxWidth:680, marginLeft:'auto', marginRight:'auto'}}>
             {(() => {
               const descriptions = {
@@ -176,19 +376,57 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
                 'Detective': 'As a Detective, you can investigate one player to learn whether they are a Killer.',
                 'Civilian': 'As a Civilian, you have no special powers — collaborate and vote wisely.'
               };
-              // If a known role exists, return its description.
-              // If role is present but not in the map, show a generic private-role message.
-              // If role is not assigned yet, don't show a "waiting" message here.
-              return descriptions[role] || (role ? 'This role is private — only you can see it.' : '');
+              // Prefer the private-assigned role if available
+              const r = myRole || role;
+              return descriptions[r] || (r ? 'This role is private — only you can see it.' : '');
             })()}
           </div>
         </div>
         {/* Small role-specific notification area (compact) */}
-        <div className="role-notification-card" role="status" aria-live="polite" style={{marginTop:10}}>
+          <div className="role-notification-card" role="status" aria-live="polite" style={{marginTop:10}}>
           <div className="role-notification-content">
-            <div className="role-notification-sub">Notifications will appear here</div>
+          <div style={{marginTop:8}}>
+                {/* hide Ready controls after the game has started */}
+                {!inGame && (
+                  !amReady ? (
+                    <button
+                      onClick={() => {
+                        try {
+                          socket.emit('player_ready', { roomId: roomCode, player: meRef.current });
+                          setAmReady(true);
+                        } catch (e) {}
+                      }}
+                      style={{padding:'8px 12px', borderRadius:8, background:'#f6d27a', border:'none', fontWeight:800, cursor:'pointer'}}
+                    >Ready</button>
+                  ) : (
+                    <div style={{color:'var(--muted)'}}>Waiting for others...</div>
+                  )
+                )}
+                {!inGame && readyState.length > 0 && (
+                  <div style={{marginTop:8, color:'var(--muted)'}}>{readyState.length} ready</div>
+                )}
+
+                {/* show prestart countdown prominently in the notification card (highest priority) */}
+                {prestartCountdown != null ? (
+                  <div key={`notif-${notifKey}-count`} className="notif-animate" style={{marginTop:8, fontSize:18, fontWeight:900}}>
+                    Game starting in {prestartCountdown}...
+                  </div>
+                ) : notificationText ? (
+                  /* otherwise show the single latest notificationText (if any) */
+                  <div key={`notif-${notifKey}-text`} className="notif-animate" style={{marginTop:8, color:'var(--muted)', display:'flex', alignItems:'center', gap:10}}>
+                    <div>{notificationText}</div>
+                    {/* if we are in a persistent phase, show the phase timer beside the message */}
+                    {phase && persistentPhases.includes(phase) && phaseRemaining != null && (
+                      <div style={{fontWeight:800}}>{phaseRemaining}s</div>
+                    )}
+                  </div>
+                ) : null}
+
+                {/* role modal removed — roles are displayed inline in the role panel above */}
+
+              </div>
+            </div>
           </div>
-        </div>
       </header>
 
       <main className="lobby-card">
@@ -202,9 +440,20 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
         <section className="lobby-card-body" style={activeTab === 'chat' ? {display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0} : {}}>
           {activeTab === 'players' ? (
             <ul className="lobby-players-list">
-              {players.map((p, i) => (
-                <li key={`${p}-${i}`} className="lobby-player-item">{p}</li>
-              ))}
+                    {playerList.map((p, i) => {
+                      const name = p && typeof p === 'object' ? p.name : p;
+                      const id = p && typeof p === 'object' ? p.id : `${name}-${i}`;
+                      const isHost = id && hostId && id === hostId;
+                      const isReady = readyState && readyState.includes(id);
+                      const isElim = eliminatedIds.includes(id);
+                      return (
+                        <li key={`${id}-${i}`} className="lobby-player-item">
+                          <span style={isElim ? {textDecoration: 'line-through', opacity: 0.6} : {}}>{name}</span>
+                          {isHost && <span style={{marginLeft:8, color:'#ffd27a', fontWeight:700}}>HOST</span>}
+                          {isReady && !inGame && <span style={{marginLeft:8, color:'#9be', fontWeight:700}}>READY</span>}
+                        </li>
+                      );
+                    })}
             </ul>
           ) : (
             <>
@@ -224,7 +473,9 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
         </section>
 
         {activeTab === 'chat' && (
-          <div className="chat-input-row chat-input-bottom">
+          /* show chat input only if public day OR if private phase for the user's role */
+          ((phase === 'day' || phase === null) || (phase === 'killer' && myRole === 'Killer') || (phase === 'doctor' && myRole === 'Doctor')) && (
+            <div className="chat-input-row chat-input-bottom">
             <input id="game-chat-input" ref={inputRef} name="chatMessage" aria-label="Type a message" className="chat-input" placeholder="Type a message..." style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ccc', marginRight: '8px' }} />
             <button
               onClick={() => {
@@ -233,7 +484,10 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
                 const me = meRef.current;
                 const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
                 const message = { id: uniqueId, from: { id: me.id, name: me.name }, text, ts: Date.now() };
-                socket.emit('send_message', { roomId: roomCode, message });
+                let scope = 'public';
+                if (phase === 'killer' && myRole === 'Killer') scope = 'killers';
+                if (phase === 'doctor' && myRole === 'Doctor') scope = 'doctors';
+                socket.emit('send_message', { roomId: roomCode, message: { ...message, scope }, scope });
                 if (inputRef.current) inputRef.current.value = '';
               }}
               className="chat-send-btn"
@@ -242,7 +496,72 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
               Send
             </button>
           </div>
-        )}
+          ))}
+        {/* Action area for night roles and voting */}
+        <div style={{marginTop:12, display:'flex', gap:12, alignItems:'center'}}>
+          {/* Show target selector when it's killer or doctor phase */}
+          {(phase === 'killer' && myRole === 'Killer') && (
+            <div style={{display:'flex', gap:8, alignItems:'center'}}>
+              <select value={targetId || ''} onChange={(e) => setTargetId(e.target.value)}>
+                <option value="">Select a target</option>
+                {playerList.filter(p => p.id !== meRef.current.id).map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              <button onClick={() => {
+                if (!targetId) return;
+                socket.emit('killer_action', { roomId: roomCode, player: meRef.current, targetId });
+              }} style={{padding:'8px 12px', borderRadius:8, background:'#e66', border:'none', color:'#fff'}}>Kill</button>
+              <div style={{color:'var(--muted)'}}>{phaseRemaining ? `${phaseRemaining}s left` : ''}</div>
+            </div>
+          )}
+
+          {(phase === 'doctor' && myRole === 'Doctor') && (
+            <div style={{display:'flex', gap:8, alignItems:'center'}}>
+              <select value={targetId || ''} onChange={(e) => setTargetId(e.target.value)}>
+                <option value="">Select someone to save</option>
+                {playerList.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              <button onClick={() => {
+                if (!targetId) return;
+                socket.emit('doctor_action', { roomId: roomCode, player: meRef.current, targetId });
+              }} style={{padding:'8px 12px', borderRadius:8, background:'#6a6', border:'none', color:'#fff'}}>Save</button>
+              <div style={{color:'var(--muted)'}}>{phaseRemaining ? `${phaseRemaining}s left` : ''}</div>
+            </div>
+          )}
+
+          {(phase === 'killer' || phase === 'doctor' || phase === 'pre_night' || phase === 'night_start') && myRole === 'Detective' && (
+            <div style={{display:'flex', gap:8, alignItems:'center'}}>
+              <select value={targetId || ''} onChange={(e) => setTargetId(e.target.value)}>
+                <option value="">Select someone to investigate</option>
+                {playerList.map(p => (
+                  <option key={`d-${p.id}`} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              <button onClick={() => {
+                if (!targetId) return;
+                socket.emit('detective_action', { roomId: roomCode, player: meRef.current, targetId });
+              }} style={{padding:'8px 12px', borderRadius:8, background:'#88f', border:'none', color:'#fff'}}>Investigate</button>
+            </div>
+          )}
+
+          {phase === 'voting' && (
+            <div style={{display:'flex', gap:8, alignItems:'center'}}>
+              <select value={voteTarget || ''} onChange={(e) => setVoteTarget(e.target.value)}>
+                <option value="">Select who to vote</option>
+                {playerList.map(p => (
+                  <option key={`v-${p.id}`} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              <button onClick={() => {
+                if (!voteTarget) return;
+                socket.emit('cast_vote', { roomId: roomCode, player: meRef.current, targetId: voteTarget });
+              }} style={{padding:'8px 12px', borderRadius:8, background:'#f6d27a', border:'none', fontWeight:800}}>Vote</button>
+            </div>
+          )}
+        </div>
       </main>
 
       <div className="external-actions">
