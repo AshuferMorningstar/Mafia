@@ -699,6 +699,7 @@ html, body, #root {
 .external-actions .lobby-action{flex:1 1 180px;min-width:120px;padding:12px 14px;border-radius:12px;border:none;cursor:pointer;font-weight:800}
 .external-actions .lobby-action.start{background:linear-gradient(90deg,#f6d27a 0%,#c7983a 100%);color:#2b1f12}
 .external-actions .lobby-action.close{background:linear-gradient(90deg,#f6ecd8 0%,#f4d57e 45%,#c7983a 100%);color:#2b1f12}
+.external-actions .lobby-action.settings{background:linear-gradient(90deg,#efe6d6 0%,#e2caa0 50%,#c9a25a 100%);color:#2b1f12}
 
 @media (max-width:600px){
   .lobby-hero-title{font-size:1.4rem}
@@ -729,6 +730,8 @@ html, body, #root {
 
   /* Keep action icons centered on desktop as well */
   .lobby-main-header > .lobby-roomcode + div { justify-content: center; }
+  /* Hide the inline SETTINGS button on desktop because the side panel is available */
+  .external-actions .lobby-action.settings { display: none; }
 }
 
 @media (max-width:899px){

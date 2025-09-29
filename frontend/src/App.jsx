@@ -206,23 +206,23 @@ export default function App() {
         <div className="panel-body">
           <h4 className="panel-heading">Game Settings</h4>
           <div className="panel-section">
-            <label className="panel-label">Number of Killers</label>
+            <label className="panel-label" htmlFor="settings-killers">Number of Killers</label>
             <div>
-              <select className="panel-select" value={settings.killCount} onChange={(e) => setSettings((s) => ({ ...s, killCount: Number(e.target.value) }))}>
+              <select id="settings-killers" name="killCount" className="panel-select" value={settings.killCount} onChange={(e) => setSettings((s) => ({ ...s, killCount: Number(e.target.value) }))}>
                 {[1,2,3].map((n) => <option key={n} value={n}>{n}</option>)}
               </select>
             </div>
 
             <div className="panel-section">
-              <label className="panel-label">Doctors</label>
-              <select className="panel-select" value={settings.doctorCount} onChange={(e) => setSettings((s) => ({ ...s, doctorCount: Number(e.target.value) }))}>
+              <label className="panel-label" htmlFor="settings-doctors">Doctors</label>
+              <select id="settings-doctors" name="doctorCount" className="panel-select" value={settings.doctorCount} onChange={(e) => setSettings((s) => ({ ...s, doctorCount: Number(e.target.value) }))}>
                 {[0,1,2].map((n) => <option key={n} value={n}>{n}</option>)}
               </select>
             </div>
 
             <div className="panel-section">
-              <label className="panel-label">Detectives</label>
-              <select className="panel-select" value={settings.detectiveCount} onChange={(e) => setSettings((s) => ({ ...s, detectiveCount: Number(e.target.value) }))}>
+              <label className="panel-label" htmlFor="settings-detectives">Detectives</label>
+              <select id="settings-detectives" name="detectiveCount" className="panel-select" value={settings.detectiveCount} onChange={(e) => setSettings((s) => ({ ...s, detectiveCount: Number(e.target.value) }))}>
                 {[0,1,2].map((n) => <option key={n} value={n}>{n}</option>)}
               </select>
             </div>
@@ -269,6 +269,7 @@ export default function App() {
             onLeave={() => { setPage('home'); setLobby(null); }}
             onStart={() => { setPage('game'); }}
             onClose={() => { setPage('home'); setLobby(null); }}
+            onOpenSettings={() => { setActiveTab('Settings'); setPanelOpen(true); }}
           />
         )}
         {page === 'game' && (

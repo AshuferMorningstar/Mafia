@@ -103,7 +103,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
                 <div className="panel-header">CHAT LOBBY</div>
                 <div className="chat-messages" style={{minHeight:120}}>Chat and game feed will appear here.</div>
                 <div className="chat-input-row" style={{marginTop:8}}>
-                  <input className="chat-input" placeholder="Type a message..." />
+                  <input id="game-chat-input" name="chatMessage" aria-label="Type a message" className="chat-input" placeholder="Type a message..." />
                   <button className="chat-send">Send</button>
                 </div>
               </div>
