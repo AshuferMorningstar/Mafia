@@ -144,26 +144,21 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
     <div className="game-root page-lobby">
       <header className="lobby-main-header">
         <h1 className="lobby-hero-title welcome-title metallic-gradient">Mafia Game Room</h1>
-        <p className="lobby-hero-sub welcome-sub metallic-gradient">A thrilling game of deception and strategy</p>
-        <div className="lobby-roomcode">ROOM CODE: <span className="code-text">{roomCode}</span></div>
-        <div className="room-code-actions">
-          <button className="room-action-btn" onClick={doCopy} title="Copy room link" aria-label="Copy room link">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden>
-              <path d="M16 3H8a2 2 0 0 0-2 2v2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-              <rect x="8" y="7" width="10" height="12" rx="2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M16 3v2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
-          <button className="room-action-btn" onClick={doShare} title="Share room link" aria-label="Share room link">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden>
-              <circle cx="18" cy="5" r="2" stroke="currentColor" strokeWidth="1.6"/>
-              <circle cx="6" cy="12" r="2" stroke="currentColor" strokeWidth="1.6"/>
-              <circle cx="18" cy="19" r="2" stroke="currentColor" strokeWidth="1.6"/>
-              <path d="M8 12l8-5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-              <path d="M8 12l8 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
-          <div className="room-action-status">{copyStatus || shareStatus || ''}</div>
+        {/* Role panel: show assigned role and description */}
+        <div className="role-panel" style={{marginTop:12, textAlign:'center'}}>
+          <div style={{fontWeight:800, color:'#f3d7b0'}}>Your role:</div>
+          <div style={{fontSize:20, fontWeight:900, marginTop:6}}>{role || 'Unassigned'}</div>
+          <div style={{marginTop:8, color:'var(--muted)', maxWidth:680, marginLeft:'auto', marginRight:'auto'}}>
+            {(() => {
+              const descriptions = {
+                'Killer': 'As a Killer, you choose a player each night to eliminate. Keep your identity secret.',
+                'Doctor': 'As a Doctor, you may protect one player each night from being eliminated.',
+                'Detective': 'As a Detective, you can investigate one player to learn whether they are a Killer.',
+                'Civilian': 'As a Civilian, you have no special powers — collaborate and vote wisely.'
+              };
+              return descriptions[role] || (role ? 'This role is private — only you can see it.' : 'Waiting for host to start the game...');
+            })()}
+          </div>
         </div>
       </header>
 
