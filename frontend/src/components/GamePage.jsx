@@ -29,6 +29,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
   const [eliminatedIds, setEliminatedIds] = useState([]);
   const [notifKey, setNotifKey] = useState(0);
   const [hostId, setHostId] = useState(null);
+  const [localSettings, setLocalSettings] = useState({ killCount: 1, doctorCount: 0, detectiveCount: 0 });
   const inputRef = useRef(null);
 
   const shareUrl = (() => {
@@ -72,6 +73,9 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
     }
     setTimeout(() => setShareStatus(''), 2000);
   };
+
+  const [showSettingsPopup, setShowSettingsPopup] = useState(false);
+  const [showSettingsToast, setShowSettingsToast] = useState(false);
 
   useEffect(() => {
     // Connect socket and fetch initial state
@@ -145,6 +149,15 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
         const ids = Object.keys(elim).filter((k) => elim[k]);
         setEliminatedIds(ids);
       } catch (e) {}
+    });
+
+    socket.off('settings_updated');
+    socket.on('settings_updated', (d) => {
+      const s = d?.settings || {};
+      if (s) setLocalSettings({ killCount: s.killCount || 1, doctorCount: s.doctorCount || 0, detectiveCount: s.detectiveCount || 0 });
+      // briefly show a toast confirming settings were applied
+      setShowSettingsToast(true);
+      setTimeout(() => setShowSettingsToast(false), 2500);
     });
 
     socket.off('game_over');
@@ -376,8 +389,42 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
               <path d="M8 12l8 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </button>
+          {/* Gear settings: host-only control opens a small popup */}
+          {hostId && meRef.current && hostId === meRef.current.id && (
+            <button className="room-action-btn" onClick={() => setShowSettingsPopup((s) => !s)} title="Room settings" aria-label="Room settings" style={{marginLeft:6}}>
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06A2 2 0 1 1 2.3 17.88l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09c.7 0 1.27-.4 1.51-1A1.65 1.65 0 0 0 4.3 7.1L4.24 7a2 2 0 1 1 2.83-2.83l.06.06c.5.5 1.16.81 1.82.33.7-.5 1-.9 1-1.51V3a2 2 0 1 1 4 0v.09c0 .6.3 1 1 1.51.66.48 1.32.17 1.82-.33l.06-.06A2 2 0 1 1 19.7 6.12l-.06.06c-.5.5-.81 1.16-.33 1.82.5.7.9 1 1.51 1H21a2 2 0 1 1 0 4h-.09c-.6 0-1.27.4-1.51 1z"/>
+              </svg>
+            </button>
+          )}
           <div className="room-action-status">{copyStatus || shareStatus || ''}</div>
         </div>
+
+        {/* Settings popup card (host only) */}
+        {showSettingsPopup && hostId && meRef.current && hostId === meRef.current.id && (
+          <div className="settings-popover">
+            <div className="card">
+              <div style={{fontWeight:800, marginBottom:8}}>Room Settings</div>
+              <div className="row">
+                <label>Killers <input type="number" min={1} value={localSettings.killCount} onChange={(e) => setLocalSettings((s) => ({...s, killCount: Number(e.target.value)}))} /></label>
+                <label>Doctors <input type="number" min={0} value={localSettings.doctorCount} onChange={(e) => setLocalSettings((s) => ({...s, doctorCount: Number(e.target.value)}))} /></label>
+              </div>
+              <div className="row">
+                <label>Detectives <input type="number" min={0} value={localSettings.detectiveCount} onChange={(e) => setLocalSettings((s) => ({...s, detectiveCount: Number(e.target.value)}))} /></label>
+              </div>
+              <div className="actions">
+                <button className="btn cancel" onClick={() => setShowSettingsPopup(false)}>Cancel</button>
+                <button className="btn apply" onClick={() => { socket.emit('set_settings', { roomId: roomCode, settings: localSettings }); setShowSettingsPopup(false); }}>Apply</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* settings applied toast */}
+        {showSettingsToast && (
+          <div className={`settings-toast enter`} role="status" aria-live="polite">Settings applied</div>
+        )}
         {/* Role panel: show assigned role and description */}
         <div className="role-panel" style={{marginTop:12, textAlign:'center'}}>
           <div style={{fontWeight:800, color:'#f3d7b0'}}>Your role:</div>
@@ -396,6 +443,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
             })()}
           </div>
         </div>
+        {/* Host settings removed from game room; managed in dashboard/panel instead */}
         {/* Small role-specific notification area (compact) */}
           <div className="role-notification-card" role="status" aria-live="polite" style={{marginTop:10}}>
           <div className="role-notification-content">

@@ -275,6 +275,21 @@ async def handle_set_settings(sid, data):
     if not room or not isinstance(settings, dict):
         return
     meta = _room_meta.setdefault(room, {})
+    # ensure only the current host can change settings
+    try:
+        session = await sio.get_session(sid)
+        player = session.get('player') if session else None
+        pid = player.get('id') if player else None
+        if pid and meta.get('host_id') and pid != meta.get('host_id'):
+            # not host, ignore
+            try:
+                await sio.emit('settings_rejected', {'message': 'Only the host may change settings'}, room=sid)
+            except Exception:
+                pass
+            return
+    except Exception:
+        pass
+    # persist settings in room meta (will be used on game start)
     meta['settings'] = settings
     await sio.emit('settings_updated', {'settings': settings}, room=room)
 
