@@ -829,6 +829,14 @@ html, body, #root {
     border-radius:14px;
   }
 
+  /* make role notification match card width on mobile so it doesn't touch the viewport edges */
+  .role-notification-card {
+    width: 92vw;
+    max-width: 420px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
   /* Limit the card body to allow internal scrolling without overflowing the viewport */
   .lobby-card-body{
     max-height: 36vh;
