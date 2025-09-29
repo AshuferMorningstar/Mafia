@@ -140,6 +140,11 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
     socket.on('room_state', (d) => {
       setPlayerList(d?.players || playerList);
       setHostId(d?.host_id || null);
+      try {
+        const elim = d?.eliminated || {};
+        const ids = Object.keys(elim).filter((k) => elim[k]);
+        setEliminatedIds(ids);
+      } catch (e) {}
     });
 
     socket.off('game_over');
@@ -240,16 +245,25 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
       if (d.result === 'killed') {
         text = `${d.player.name} was killed last night.`;
       } else if (d.result === 'saved') {
-        text = `${d.player.name} was saved by the Doctor last night.`;
+        // if the server included who saved, announce by name
+        if (d.saved_by && d.saved_by.name) {
+          text = `Doctor ${d.saved_by.name} saved ${d.player.name} last night.`;
+        } else {
+          text = `${d.player.name} was saved by the Doctor last night.`;
+        }
       } else {
         text = `No one was killed last night.`;
       }
       setNotificationText(text);
       setMessages((prev) => [...prev, { id: `night-${Date.now()}`, from: { name: 'System' }, text }]);
-      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/rooms/${roomCode}/players`)
-        .then((r) => r.json())
-        .then((d) => setPlayerList(d.players || playerList))
-        .catch(() => {});
+      // update eliminated list if provided in the payload (server emits room_state too)
+      try {
+        if (d.result === 'killed' && d.player && d.player.id) setEliminatedIds((s) => Array.from(new Set([...s, d.player.id])));
+        if (d.result === 'saved') {
+          // ensure saved players are not marked eliminated
+          if (d.player && d.player.id) setEliminatedIds((s) => s.filter((x) => x !== d.player.id));
+        }
+      } catch (e) {}
       // update eliminated list if provided
       try {
         if (d?.player) {
@@ -448,7 +462,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
                       const isElim = eliminatedIds.includes(id);
                       return (
                         <li key={`${id}-${i}`} className="lobby-player-item">
-                          <span style={isElim ? {textDecoration: 'line-through', opacity: 0.6} : {}}>{name}</span>
+                          <span style={isElim ? {textDecoration: 'line-through', opacity: 0.6} : {}}>{name} {isElim ? '💀' : ''}</span>
                           {isHost && <span style={{marginLeft:8, color:'#ffd27a', fontWeight:700}}>HOST</span>}
                           {isReady && !inGame && <span style={{marginLeft:8, color:'#9be', fontWeight:700}}>READY</span>}
                         </li>
@@ -459,7 +473,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
             <>
               <div style={{flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', minHeight: 0}}>
                   <div className="lobby-chat-placeholder">Chat will appear here</div>
-                  <div className="chat-messages" id="chat-messages">
+                    <div className="chat-messages" id="chat-messages">
                     {messages.map((m, idx) => (
                       <div key={`${m.id || idx}-${idx}`} style={{padding: '6px 0'}}>
                         <strong style={{color: '#f3d7b0'}}>{m.from?.name || m.sender_name || 'Anon'}:</strong>
@@ -476,7 +490,8 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
           /* show chat input only if public day OR if private phase for the user's role */
           ((phase === 'day' || phase === null) || (phase === 'killer' && myRole === 'Killer') || (phase === 'doctor' && myRole === 'Doctor')) && (
             <div className="chat-input-row chat-input-bottom">
-            <input id="game-chat-input" ref={inputRef} name="chatMessage" aria-label="Type a message" className="chat-input" placeholder="Type a message..." style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ccc', marginRight: '8px' }} />
+            {/* disable chat input and send button if player is eliminated */}
+            <input id="game-chat-input" ref={inputRef} name="chatMessage" aria-label="Type a message" className="chat-input" placeholder="Type a message..." style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ccc', marginRight: '8px' }} disabled={eliminatedIds.includes(meRef.current.id)} />
             <button
               onClick={() => {
                 const text = inputRef.current?.value;
@@ -492,6 +507,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
               }}
               className="chat-send-btn"
               style={{ padding: '10px 18px', borderRadius: '8px', background: '#f6d27a', color: '#2b1f12', fontWeight: 700, border: 'none', cursor: 'pointer' }}
+              disabled={eliminatedIds.includes(meRef.current.id)}
             >
               Send
             </button>
@@ -502,7 +518,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
           {/* Show target selector when it's killer or doctor phase */}
           {(phase === 'killer' && myRole === 'Killer') && (
             <div style={{display:'flex', gap:8, alignItems:'center'}}>
-              <select value={targetId || ''} onChange={(e) => setTargetId(e.target.value)}>
+              <select value={targetId || ''} onChange={(e) => setTargetId(e.target.value)} disabled={eliminatedIds.includes(meRef.current.id)}>
                 <option value="">Select a target</option>
                 {playerList.filter(p => p.id !== meRef.current.id).map(p => (
                   <option key={p.id} value={p.id}>{p.name}</option>
@@ -511,14 +527,14 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
               <button onClick={() => {
                 if (!targetId) return;
                 socket.emit('killer_action', { roomId: roomCode, player: meRef.current, targetId });
-              }} style={{padding:'8px 12px', borderRadius:8, background:'#e66', border:'none', color:'#fff'}}>Kill</button>
+              }} style={{padding:'8px 12px', borderRadius:8, background:'#e66', border:'none', color:'#fff'}} disabled={eliminatedIds.includes(meRef.current.id)}>Kill</button>
               <div style={{color:'var(--muted)'}}>{phaseRemaining ? `${phaseRemaining}s left` : ''}</div>
             </div>
           )}
 
           {(phase === 'doctor' && myRole === 'Doctor') && (
             <div style={{display:'flex', gap:8, alignItems:'center'}}>
-              <select value={targetId || ''} onChange={(e) => setTargetId(e.target.value)}>
+              <select value={targetId || ''} onChange={(e) => setTargetId(e.target.value)} disabled={eliminatedIds.includes(meRef.current.id)}>
                 <option value="">Select someone to save</option>
                 {playerList.map(p => (
                   <option key={p.id} value={p.id}>{p.name}</option>
@@ -527,29 +543,29 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
               <button onClick={() => {
                 if (!targetId) return;
                 socket.emit('doctor_action', { roomId: roomCode, player: meRef.current, targetId });
-              }} style={{padding:'8px 12px', borderRadius:8, background:'#6a6', border:'none', color:'#fff'}}>Save</button>
+              }} style={{padding:'8px 12px', borderRadius:8, background:'#6a6', border:'none', color:'#fff'}} disabled={eliminatedIds.includes(meRef.current.id)}>Save</button>
               <div style={{color:'var(--muted)'}}>{phaseRemaining ? `${phaseRemaining}s left` : ''}</div>
             </div>
           )}
 
           {(phase === 'killer' || phase === 'doctor' || phase === 'pre_night' || phase === 'night_start') && myRole === 'Detective' && (
             <div style={{display:'flex', gap:8, alignItems:'center'}}>
-              <select value={targetId || ''} onChange={(e) => setTargetId(e.target.value)}>
+              <select value={targetId || ''} onChange={(e) => setTargetId(e.target.value)} disabled={eliminatedIds.includes(meRef.current.id)}>
                 <option value="">Select someone to investigate</option>
                 {playerList.map(p => (
                   <option key={`d-${p.id}`} value={p.id}>{p.name}</option>
                 ))}
               </select>
               <button onClick={() => {
-                if (!targetId) return;
+                if (!target_id) return;
                 socket.emit('detective_action', { roomId: roomCode, player: meRef.current, targetId });
-              }} style={{padding:'8px 12px', borderRadius:8, background:'#88f', border:'none', color:'#fff'}}>Investigate</button>
+              }} style={{padding:'8px 12px', borderRadius:8, background:'#88f', border:'none', color:'#fff'}} disabled={eliminatedIds.includes(meRef.current.id)}>Investigate</button>
             </div>
           )}
 
           {phase === 'voting' && (
             <div style={{display:'flex', gap:8, alignItems:'center'}}>
-              <select value={voteTarget || ''} onChange={(e) => setVoteTarget(e.target.value)}>
+              <select value={voteTarget || ''} onChange={(e) => setVoteTarget(e.target.value)} disabled={eliminatedIds.includes(meRef.current.id)}>
                 <option value="">Select who to vote</option>
                 {playerList.map(p => (
                   <option key={`v-${p.id}`} value={p.id}>{p.name}</option>
@@ -558,7 +574,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
               <button onClick={() => {
                 if (!voteTarget) return;
                 socket.emit('cast_vote', { roomId: roomCode, player: meRef.current, targetId: voteTarget });
-              }} style={{padding:'8px 12px', borderRadius:8, background:'#f6d27a', border:'none', fontWeight:800}}>Vote</button>
+              }} style={{padding:'8px 12px', borderRadius:8, background:'#f6d27a', border:'none', fontWeight:800}} disabled={eliminatedIds.includes(meRef.current.id)}>Vote</button>
             </div>
           )}
         </div>

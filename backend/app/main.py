@@ -170,7 +170,7 @@ async def handle_join(sid, data):
     # broadcast to room
     await sio.emit('player_joined', {'player': player}, room=room)
     # also emit a room_state update (players + host)
-    await sio.emit('room_state', {'players': _rooms.get(room, []), 'host_id': meta.get('host_id')}, room=room)
+    await sio.emit('room_state', {'players': _rooms.get(room, []), 'host_id': meta.get('host_id'), 'eliminated': meta.get('eliminated', {})}, room=room)
 
 
 @sio.on('leave_room')
@@ -200,6 +200,18 @@ async def handle_message(sid, data):
         return
     meta = _room_meta.get(room, {})
     phase = meta.get('phase')
+
+    # block messaging from eliminated players
+    try:
+        sender_id = message.get('from', {}).get('id')
+        if sender_id and meta.get('eliminated', {}).get(sender_id):
+            try:
+                await sio.emit('chat_blocked', {'message': 'You are dead and cannot send messages.'}, room=sid)
+            except Exception:
+                pass
+            return
+    except Exception:
+        pass
 
     # Night restrictions: public chat is locked during night
     if phase and phase.startswith('night'):
@@ -300,7 +312,16 @@ async def handle_player_ready(sid, data):
                 pass
 
             # assign roles according to host settings stored in meta
-            settings = meta.get('settings', {})
+            settings = meta.get('settings', {}) or {}
+            # normalize numeric settings to ints (safeguard against string inputs)
+            try:
+                settings = {
+                    'killCount': int(settings.get('killCount', 1)),
+                    'doctorCount': int(settings.get('doctorCount', 0)),
+                    'detectiveCount': int(settings.get('detectiveCount', 0)),
+                }
+            except Exception:
+                settings = {'killCount': 1, 'doctorCount': 0, 'detectiveCount': 0}
             assigned = _assign_roles_to_players(players, settings)
             # store assigned roles in meta and mark in-game
             meta['assigned_roles'] = {p.get('id'): p.get('role') for p in assigned}
@@ -345,7 +366,8 @@ async def handle_player_ready(sid, data):
 
             # broadcast roles assigned (public roster only)
             public_players = [{'id': p.get('id'), 'name': p.get('name')} for p in assigned]
-            await sio.emit('roles_assigned', {'players': public_players, 'role_descriptions': role_descriptions}, room=room)
+            # include the normalized settings the host applied so clients can display them
+            await sio.emit('roles_assigned', {'players': public_players, 'role_descriptions': role_descriptions, 'settings': settings}, room=room)
 
             # short pause to allow client to show role card, then start night
             await asyncio.sleep(3)
@@ -370,8 +392,11 @@ async def _start_killer_phase(room: str, duration: int = 120):
     meta = _room_meta.setdefault(room, {})
     meta['phase'] = 'killer'
     meta['night_kill'] = None
-    # notify killers to open eyes and act
-    await sio.emit('phase', {'phase': 'killer', 'message': 'Killer, open your eyes and choose a target', 'duration': duration}, room=meta.get('killer_room'))
+    # notify everyone that killer phase has started (public notification + timer)
+    await sio.emit('phase', {'phase': 'killer', 'message': 'Night has fallen — Killers, choose your target', 'duration': duration}, room=room)
+    # also notify killer private room so killers get private chat context
+    if meta.get('killer_room'):
+        await sio.emit('phase', {'phase': 'killer', 'message': 'Killer, open your eyes and choose a target', 'duration': duration}, room=meta.get('killer_room'))
 
     async def killer_timer():
         try:
@@ -396,12 +421,19 @@ async def handle_killer_action(sid, data):
     # only accept during killer phase
     if meta.get('phase') != 'killer':
         return
+    # block eliminated players from acting
+    if meta.get('eliminated', {}).get(pid):
+        try:
+            await sio.emit('action_blocked', {'message': 'You are eliminated and cannot act.'}, room=sid)
+        except Exception:
+            pass
+        return
     pid = player.get('id')
     assigned = meta.get('assigned_roles', {})
     if assigned.get(pid) != 'Killer':
         return
-    # record the chosen kill and cancel killer timer for early move to doctor
-    meta['night_kill'] = target_id
+    # record the chosen kill (and actor) and cancel killer timer for early move to doctor
+    meta['night_kill'] = {'target': target_id, 'by': pid}
     task = meta.pop('killer_task', None)
     if task and not task.done():
         task.cancel()
@@ -412,8 +444,11 @@ async def _start_doctor_phase(room: str, duration: int = 120):
     meta = _room_meta.setdefault(room, {})
     meta['phase'] = 'doctor'
     meta['doctor_save'] = None
-    # notify doctors to open eyes and act
-    await sio.emit('phase', {'phase': 'doctor', 'message': 'Doctor, choose someone to save', 'duration': duration}, room=meta.get('doctor_room'))
+    # notify everyone that doctor phase has started (public notification + timer)
+    await sio.emit('phase', {'phase': 'doctor', 'message': 'Doctor: choose someone to save', 'duration': duration}, room=room)
+    # also notify doctor private room so doctors get private chat context
+    if meta.get('doctor_room'):
+        await sio.emit('phase', {'phase': 'doctor', 'message': 'Doctor, choose someone to save', 'duration': duration}, room=meta.get('doctor_room'))
 
     async def doctor_timer():
         try:
@@ -441,7 +476,15 @@ async def handle_doctor_action(sid, data):
     assigned = meta.get('assigned_roles', {})
     if assigned.get(pid) != 'Doctor':
         return
-    meta['doctor_save'] = target_id
+    # block eliminated doctors from acting
+    if meta.get('eliminated', {}).get(pid):
+        try:
+            await sio.emit('action_blocked', {'message': 'You are eliminated and cannot act.'}, room=sid)
+        except Exception:
+            pass
+        return
+    # record doctor save target and which doctor performed the save
+    meta['doctor_save'] = {'target': target_id, 'by': pid}
     task = meta.pop('doctor_task', None)
     if task and not task.done():
         task.cancel()
@@ -464,6 +507,13 @@ async def handle_detective_action(sid, data):
     assigned = meta.get('assigned_roles', {})
     if assigned.get(pid) != 'Detective':
         return
+    # block eliminated detective from acting
+    if meta.get('eliminated', {}).get(pid):
+        try:
+            await sio.emit('action_blocked', {'message': 'You are eliminated and cannot act.'}, room=sid)
+        except Exception:
+            pass
+        return
     # Determine if target is a killer
     role = assigned.get(target_id)
     is_killer = (role == 'Killer')
@@ -482,14 +532,21 @@ async def _resolve_night_and_start_day(room: str):
     saved = meta.get('doctor_save')
     killed_player = None
     saved_player = None
+    saved_by = None
 
     # find player objects
     players = _rooms.get(room, [])
     id_to_player = {p.get('id'): p for p in players}
     if killed:
-        killed_player = id_to_player.get(killed)
+        # killed may be a dict with target/by or just an id (legacy)
+        ktarget = killed.get('target') if isinstance(killed, dict) else killed
+        killed_player = id_to_player.get(ktarget)
     if saved:
-        saved_player = id_to_player.get(saved)
+        starget = saved.get('target') if isinstance(saved, dict) else saved
+        saved_player = id_to_player.get(starget)
+        sb = saved.get('by') if isinstance(saved, dict) else None
+        if sb:
+            saved_by = id_to_player.get(sb)
 
     # determine outcome
     outcome = {}
@@ -507,12 +564,13 @@ async def _resolve_night_and_start_day(room: str):
     # broadcast night resolution to all players
     if outcome['result'] == 'killed' and outcome['player']:
         await sio.emit('night_result', {'result': 'killed', 'player': {'id': outcome['player'].get('id'), 'name': outcome['player'].get('name'), 'role': meta.get('assigned_roles', {}).get(outcome['player'].get('id'))}}, room=room)
-        # remove killed player from active players
-        _rooms[room] = [p for p in players if p.get('id') != outcome['player'].get('id')]
-        # mark eliminated
+        # mark eliminated (keep player in the players list so UIs can show them as dead)
         meta.setdefault('eliminated', {})[outcome['player'].get('id')] = True
     elif outcome['result'] == 'saved' and outcome['player']:
-        await sio.emit('night_result', {'result': 'saved', 'player': {'id': outcome['player'].get('id'), 'name': outcome['player'].get('name')}}, room=room)
+        payload = {'result': 'saved', 'player': {'id': outcome['player'].get('id'), 'name': outcome['player'].get('name')}}
+        if saved_by:
+            payload['saved_by'] = {'id': saved_by.get('id'), 'name': saved_by.get('name')}
+        await sio.emit('night_result', payload, room=room)
     else:
         await sio.emit('night_result', {'result': 'none'}, room=room)
 
@@ -535,7 +593,7 @@ async def _resolve_night_and_start_day(room: str):
     await sio.emit('phase', {'phase': 'day', 'message': 'Day has begun — discuss and then vote'}, room=room)
 
     # allow public chat again; send updated room state and players list
-    await sio.emit('room_state', {'players': _rooms.get(room, []), 'host_id': meta.get('host_id')}, room=room)
+    await sio.emit('room_state', {'players': _rooms.get(room, []), 'host_id': meta.get('host_id'), 'eliminated': meta.get('eliminated', {})}, room=room)
 
     # start voting phase automatically after a short discussion window (optional)
     # For simplicity, immediately start voting — clients can delay locally if desired
@@ -572,10 +630,19 @@ async def handle_cast_vote(sid, data):
     if meta.get('phase') != 'voting':
         return
     vid = voter.get('id')
+    # block eliminated players from voting
+    if meta.get('eliminated', {}).get(vid):
+        try:
+            await sio.emit('action_blocked', {'message': 'You are eliminated and cannot vote.'}, room=sid)
+        except Exception:
+            pass
+        return
     meta.setdefault('votes', {})[vid] = target
     # optional early resolution: if all alive players have voted, resolve early
-    alive = _rooms.get(room, [])
-    alive_ids = [p.get('id') for p in alive]
+    # determine alive (non-eliminated) players
+    all_players = _rooms.get(room, [])
+    alive_players = [p for p in all_players if not meta.get('eliminated', {}).get(p.get('id'))]
+    alive_ids = [p.get('id') for p in alive_players]
     if all((a in meta.get('votes', {})) for a in alive_ids):
         task = meta.pop('voting_task', None)
         if task and not task.done():
@@ -627,7 +694,9 @@ async def _resolve_votes(room: str):
 async def _check_win_conditions(room: str):
     """Simple win checks: if all killers are dead -> Civilians win; if killers >= civilians -> Killers win."""
     meta = _room_meta.setdefault(room, {})
-    players = _rooms.get(room, [])
+    # consider only non-eliminated players as alive
+    all_players = _rooms.get(room, [])
+    players = [p for p in all_players if not meta.get('eliminated', {}).get(p.get('id'))]
     assigned = meta.get('assigned_roles', {})
     # count alive roles
     alive_roles = {'Killer': 0, 'Civilian': 0, 'Doctor': 0, 'Detective': 0}
