@@ -436,7 +436,7 @@ async def _start_killer_phase(room: str, duration: int = 120):
             await asyncio.sleep(duration)
         except asyncio.CancelledError:
             return
-        # timer expired, proceed to doctor phase
+        # timer expired, proceed to doctor phase (or skip doctor if none alive)
         await _start_doctor_phase(room)
 
     task = asyncio.create_task(killer_timer())
@@ -491,7 +491,17 @@ async def handle_killer_action(sid, data):
     task = meta.pop('killer_task', None)
     if task and not task.done():
         task.cancel()
-    await _start_doctor_phase(room)
+    # after a killer action, if there are no alive doctors, skip doctor phase
+    players = _rooms.get(room, [])
+    assigned = meta.get('assigned_roles', {})
+    alive_players = [p for p in players if not meta.get('eliminated', {}).get(p.get('id'))]
+    # count alive doctors
+    alive_doctors = sum(1 for p in alive_players if assigned.get(p.get('id')) == 'Doctor')
+    if alive_doctors <= 0:
+        # directly resolve night (doctor phase skipped)
+        await _resolve_night_and_start_day(room)
+    else:
+        await _start_doctor_phase(room)
 
 
 async def _start_doctor_phase(room: str, duration: int = 120):
@@ -699,6 +709,9 @@ async def _start_voting_phase(room: str, duration: int = 120):
     meta = _room_meta.setdefault(room, {})
     meta['phase'] = 'voting'
     meta['votes'] = {}
+    # reset per-round vote actions tracker
+    actions = meta.setdefault('actions', {})
+    actions['votes'] = {}
     start_ts = int(time.time() * 1000)
     await sio.emit('phase', {'phase': 'voting', 'message': 'Cast your vote: who do you think is a killer?', 'duration': duration, 'start_ts': start_ts}, room=room)
 

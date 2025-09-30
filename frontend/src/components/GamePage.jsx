@@ -624,6 +624,13 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
                         socket.emit('cast_vote', { roomId: roomCode, player: meRef.current, targetId: id });
                         setNotificationText(`You voted for ${name}`);
                       }}>🤨</button>
+                      {/* Skip/Abstain for voting per-row (also permitted) */}
+                      <button title="Skip Vote" disabled={!canSusVote} onClick={() => {
+                        if (!canSusVote) return;
+                        setCurrentVotes((s) => ({ ...s, [meRef.current.id]: null }));
+                        socket.emit('cast_vote', { roomId: roomCode, player: meRef.current, targetId: null });
+                        setNotificationText('You abstained from voting');
+                      }}>⏭</button>
                     </div>
                   </li>
                 );
