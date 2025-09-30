@@ -586,7 +586,24 @@ async def handle_player_ready(sid, data):
             # broadcast roles assigned (public roster only)
             public_players = [{'id': p.get('id'), 'name': p.get('name')} for p in assigned]
             # include the normalized settings the host applied so clients can display them
-            await sio.emit('roles_assigned', {'players': public_players, 'role_descriptions': role_descriptions, 'settings': settings}, room=room)
+            # also emit a room_state update that contains alive_role_members so clients have teammate lists
+            try:
+                players_now = _rooms.get(room, [])
+                assigned_map = meta.get('assigned_roles', {})
+                eliminated = meta.get('eliminated', {}) or {}
+                alive = [p for p in players_now if not eliminated.get(p.get('id'))]
+                alive_role_members = {}
+                for p in alive:
+                    r = assigned_map.get(p.get('id')) or 'Civilian'
+                    alive_role_members.setdefault(r, []).append({'id': p.get('id'), 'name': p.get('name')})
+                role_counts = {k: len(v) for k, v in alive_role_members.items()}
+                await sio.emit('room_state', {'players': public_players, 'host_id': meta.get('host_id'), 'eliminated': meta.get('eliminated', {}), 'alive_role_members': alive_role_members, 'role_counts': role_counts}, room=room)
+            except Exception:
+                await sio.emit('roles_assigned', {'players': public_players, 'role_descriptions': role_descriptions, 'settings': settings}, room=room)
+            try:
+                await sio.emit('roles_assigned', {'players': public_players, 'role_descriptions': role_descriptions, 'settings': settings}, room=room)
+            except Exception:
+                pass
 
             # short pause to allow client to show role card, then start night
             await asyncio.sleep(3)
@@ -924,8 +941,20 @@ async def _resolve_night_and_start_day(room: str):
         summary['message'] = 'No one died last night'
         summary['doctor_saved'] = False
 
-    # allow public chat again; send updated room state and players list before summary
-    await sio.emit('room_state', {'players': _rooms.get(room, []), 'host_id': meta.get('host_id'), 'eliminated': meta.get('eliminated', {})}, room=room)
+    # allow public chat again; send updated room state and players list before summary (include alive_role_members)
+    try:
+        players_now = _rooms.get(room, [])
+        assigned_map = meta.get('assigned_roles', {})
+        eliminated = meta.get('eliminated', {}) or {}
+        alive = [p for p in players_now if not eliminated.get(p.get('id'))]
+        alive_role_members = {}
+        for p in alive:
+            r = assigned_map.get(p.get('id')) or 'Civilian'
+            alive_role_members.setdefault(r, []).append({'id': p.get('id'), 'name': p.get('name')})
+        role_counts = {k: len(v) for k, v in alive_role_members.items()}
+        await sio.emit('room_state', {'players': players_now, 'host_id': meta.get('host_id'), 'eliminated': meta.get('eliminated', {}), 'alive_role_members': alive_role_members, 'role_counts': role_counts}, room=room)
+    except Exception:
+        await sio.emit('room_state', {'players': _rooms.get(room, []), 'host_id': meta.get('host_id'), 'eliminated': meta.get('eliminated', {})}, room=room)
     await sio.emit('night_summary', summary, room=room)
     # give players time to read the summary
     await asyncio.sleep(5)
@@ -1108,7 +1137,19 @@ async def _check_win_conditions(room: str):
 
 
 @app.get('/rooms/{room_id}/messages')
-async def room_messages(room_id: str, limit: int = 50):
+async def room_messages(room_id: str, scope: str = None, limit: int = 50):
+    """Return recent messages for a room. If `scope` is provided and is 'killers' or 'doctors',
+    attempt to return messages stored under the private room namespace (room_id + '__killers' or '__doctors').
+    """
+    target_room = room_id
+    if scope in ('killers', 'doctors'):
+        suffix = '__killers' if scope == 'killers' else '__doctors'
+        candidate = f"{room_id}{suffix}"
+        # if no messages found for the private room, fall back to public room
+        msgs = get_recent_messages(candidate, limit=limit)
+        if msgs:
+            return JSONResponse({'messages': msgs})
+        # else fall back to public
     msgs = get_recent_messages(room_id, limit=limit)
     return JSONResponse({'messages': msgs})
 
