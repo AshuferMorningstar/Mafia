@@ -88,22 +88,27 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
     const me = meRef.current;
 
     // perform a simple time sync: send request and measure RTT to estimate clock offset
-    let timeSyncStart = Date.now();
-    socket.emit('time_sync', { client_ts: timeSyncStart });
-    socket.off('time_sync_response');
-    socket.on('time_sync_response', (d) => {
+    const doTimeSync = () => {
       try {
-        const now = Date.now();
-        const server_ts = d?.server_ts || null;
-        if (!server_ts) return;
-        const rtt = now - timeSyncStart;
-        // estimated server time now = server_ts + rtt/2, so offset = server_time_now - local_now
-        const estimated_server_now = server_ts + Math.floor(rtt / 2);
-        const offset = estimated_server_now - now;
-        // store offset on window so other handlers can access it (simple approach)
-        window.__server_time_offset = offset;
+        let timeSyncStart = Date.now();
+        socket.emit('time_sync', { client_ts: timeSyncStart });
+        socket.off('time_sync_response');
+        socket.on('time_sync_response', (d) => {
+          try {
+            const now = Date.now();
+            const server_ts = d?.server_ts || null;
+            if (!server_ts) return;
+            const rtt = now - timeSyncStart;
+            // estimated server time now = server_ts + rtt/2, so offset = server_time_now - local_now
+            const estimated_server_now = server_ts + Math.floor(rtt / 2);
+            const offset = estimated_server_now - now;
+            // store offset on window so other handlers can access it (simple approach)
+            window.__server_time_offset = offset;
+          } catch (e) {}
+        });
       } catch (e) {}
-    });
+    };
+    doTimeSync();
 
     fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/rooms/${roomCode}/players`)
       .then((r) => r.json())
@@ -115,7 +120,29 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
       .then((d) => setMessages(d.messages || []))
       .catch(() => {});
 
-    socket.emit('join_room', { roomId: roomCode, player: me, token: undefined });
+    const doJoin = () => {
+      try {
+        socket.emit('join_room', { roomId: roomCode, player: me, token: undefined });
+        // refresh authoritative state after join
+        fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/rooms/${roomCode}/players`)
+          .then((r) => r.json())
+          .then((d) => setPlayerList(d.players || []))
+          .catch(() => {});
+        fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/rooms/${roomCode}/messages`)
+          .then((r) => r.json())
+          .then((d) => setMessages(d.messages || []))
+          .catch(() => {});
+      } catch (e) {}
+    };
+    doJoin();
+
+    // ensure we re-join automatically when the socket reconnects (network reconnects or hot reload)
+    socket.off('connect');
+    socket.on('connect', () => {
+      console.debug('[socket] connected, rejoining room', roomCode);
+      doTimeSync();
+      doJoin();
+    });
 
     socket.off('new_message');
     socket.off('player_joined');

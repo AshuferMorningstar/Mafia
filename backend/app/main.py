@@ -32,6 +32,8 @@ async def read_root():
 _rooms = {}
 # room metadata (e.g., host id)
 _room_meta = {}
+# grace window before removing a disconnected player (seconds)
+GRACE_SECONDS = 8
 
 
 # --- Simple SQLite persistence for messages ---
@@ -140,41 +142,64 @@ async def disconnect(sid):
     room = session.get('room') if session else None
     player = session.get('player') if session else None
 
-    # Helper to remove pid from a specific room
-    async def _remove_pid_from_room(room, pid, player_obj):
+    # Helper to finalize removal of a player from a room (actual deletion and emits)
+    async def _finalize_removal(room, pid, player_obj):
         meta = _room_meta.setdefault(room, {})
+        # double-check no active sids exist for this pid
         sids = meta.setdefault('player_sids', {})
         lst = sids.get(pid) or []
-        if sid in lst:
-            try:
-                lst.remove(sid)
-            except ValueError:
-                pass
-        # if no more sids for this player, remove them from the room entirely
-        if not lst:
-            players = _rooms.get(room, [])
-            _rooms[room] = [p for p in players if p.get('id') != pid]
-            sids.pop(pid, None)
-            try:
-                await sio.emit('player_left', {'player': player_obj}, room=room)
-            except Exception:
-                pass
-            if meta.get('host_id') == pid:
-                remaining = _rooms.get(room, [])
-                meta['host_id'] = remaining[0].get('id') if remaining else None
-            try:
-                await sio.emit('room_state', {'players': _rooms.get(room, []), 'host_id': meta.get('host_id'), 'eliminated': meta.get('eliminated', {})}, room=room)
-            except Exception:
-                pass
-            return True
-        else:
-            meta['player_sids'][pid] = lst
+        if lst:
+            # player reconnected, do nothing
             return False
+        players = _rooms.get(room, [])
+        _rooms[room] = [p for p in players if p.get('id') != pid]
+        sids.pop(pid, None)
+        # clean up any pending disconnect task entry
+        pending = meta.get('pending_disconnects', {})
+        pending.pop(pid, None)
+        try:
+            await sio.emit('player_left', {'player': player_obj}, room=room)
+        except Exception:
+            pass
+        if meta.get('host_id') == pid:
+            remaining = _rooms.get(room, [])
+            meta['host_id'] = remaining[0].get('id') if remaining else None
+        try:
+            await sio.emit('room_state', {'players': _rooms.get(room, []), 'host_id': meta.get('host_id'), 'eliminated': meta.get('eliminated', {})}, room=room)
+        except Exception:
+            pass
+        return True
 
     if room and player:
         pid = player.get('id')
         try:
-            removed = await _remove_pid_from_room(room, pid, player)
+            # remove this sid from the player's sid list
+            meta = _room_meta.setdefault(room, {})
+            sids = meta.setdefault('player_sids', {})
+            lst = sids.get(pid) or []
+            if sid in lst:
+                try:
+                    lst.remove(sid)
+                except ValueError:
+                    pass
+            meta['player_sids'][pid] = lst
+            # if no more sids, schedule a delayed finalize to allow quick reconnects
+            if not lst:
+                pending = meta.setdefault('pending_disconnects', {})
+                if pid not in pending:
+                    async def _delayed():
+                        try:
+                            await asyncio.sleep(GRACE_SECONDS)
+                            # re-check and finalize
+                            await _finalize_removal(room, pid, player)
+                        except asyncio.CancelledError:
+                            # cancelled because player rejoined
+                            return
+                        except Exception:
+                            return
+                    task = asyncio.create_task(_delayed())
+                    pending[pid] = task
+                    print(f"Scheduled removal for player {pid} in room {room} in {GRACE_SECONDS}s")
         except Exception:
             removed = False
 
@@ -188,12 +213,30 @@ async def disconnect(sid):
                         # find player object from _rooms
                         players = _rooms.get(r, [])
                         player_obj = next((p for p in players if p.get('id') == pid), {'id': pid, 'name': None})
-                        try:
-                            removed = await _remove_pid_from_room(r, pid, player_obj)
-                        except Exception:
-                            removed = False
-                        if removed:
-                            break
+                        # remove this sid from the list
+                        lst = sid_list or []
+                        if sid in lst:
+                            try:
+                                lst.remove(sid)
+                            except ValueError:
+                                pass
+                        meta['player_sids'][pid] = lst
+                        # if empty, schedule delayed finalize if not already scheduled
+                        if not lst:
+                            pending = meta.setdefault('pending_disconnects', {})
+                            if pid not in pending:
+                                async def _delayed_r(rm, p, pobj):
+                                    try:
+                                        await asyncio.sleep(GRACE_SECONDS)
+                                        await _finalize_removal(rm, p, pobj)
+                                    except asyncio.CancelledError:
+                                        return
+                                    except Exception:
+                                        return
+                                task = asyncio.create_task(_delayed_r(r, pid, player_obj))
+                                pending[pid] = task
+                                print(f"Scheduled removal for player {pid} in room {r} in {GRACE_SECONDS}s")
+                        break
                 if removed:
                     break
             except Exception:
@@ -227,6 +270,19 @@ async def handle_join(sid, data):
         lst.append(player)
     # ensure room metadata exists
     meta = _room_meta.setdefault(room, {})
+    # cancel any pending disconnect removal for this player (they reconnected)
+    try:
+        pid = player.get('id')
+        pending = meta.get('pending_disconnects', {})
+        if pid and pending and pid in pending:
+            task = pending.pop(pid, None)
+            if task:
+                try:
+                    task.cancel()
+                except Exception:
+                    pass
+    except Exception:
+        pass
     # map player id -> list of sids so we can support multiple tabs per player
     sids = meta.setdefault('player_sids', {})
     try:
