@@ -294,6 +294,13 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
     socket.on('phase', (d) => {
       if (!d) return;
       const p = d.phase;
+      // reset per-round action flags at the start of night so Killers/Doctors can act each round
+      if (p === 'night_start' || p === 'pre_night' || p === 'killer') {
+        try {
+          setKillerActed(false);
+          setDoctorActed(false);
+        } catch (e) {}
+      }
       setPhase(p);
       const duration = d.duration || null;
       setPhaseDuration(duration);
