@@ -722,8 +722,9 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
                 const canSusVote = (phase === 'day' || phase === 'voting') && !isElim && !eliminatedIds.includes(meRef.current.id) && !(currentVotes[meRef.current.id] === id);
                 return (
                   <li key={`${id}-${i}`} className="lobby-player-item" style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:12}}>
-                    <div style={isElim ? {textDecoration: 'line-through', opacity: 0.6} : {}}>{name} {id === meRef.current?.id ? <span style={{fontWeight:800, marginLeft:6}}>(you)</span> : ''} {isElim ? '💀' : ''}
-                      {isHost && <span style={{marginLeft:8, color:'#ffd27a', fontWeight:700}}>HOST</span>}
+                    <div style={isElim ? {textDecoration: 'line-through', opacity: 0.6} : {}}>
+                      {name} {id === meRef.current?.id ? <span style={{fontWeight:700, marginLeft:6, fontSize:12}}>(you)</span> : ''} {isElim ? '💀' : ''}
+                      {isHost && <span style={{marginLeft:8, color:'#ffd27a', fontWeight:600, fontSize:12}}>HOST</span>}
                       {isReady && !inGame && <span style={{marginLeft:8, color:'#9be', fontWeight:700}}>READY</span>}
                     </div>
                     <div style={{display:'flex', gap:8}}>
@@ -736,12 +737,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
                             setKillerActed(true);
                             setNotificationText(`You targeted ${name}`);
                           }}>🔪</button>
-                          <button title="Skip Kill" disabled={!canKill} onClick={() => {
-                            if (!canKill) return;
-                            socket.emit('killer_action', { roomId: roomCode, player: meRef.current, skip: true });
-                            setKillerActed(true);
-                            setNotificationText(`You skipped killing this night`);
-                          }}>⏭</button>
+                          {/* compact skip removed - use shared Skip/Abstain control */}
                         </>
                       )}
                       {/* Doctor action (bandage) - visible only to Doctors */}
@@ -753,12 +749,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
                             setDoctorActed(true);
                             setNotificationText(`You chose to save ${name}`);
                           }}>🩹</button>
-                          <button title="Skip Save" disabled={!canSave} onClick={() => {
-                            if (!canSave) return;
-                            socket.emit('doctor_action', { roomId: roomCode, player: meRef.current, skip: true });
-                            setDoctorActed(true);
-                            setNotificationText(`You skipped saving this night`);
-                          }}>⏭</button>
+                          {/* compact skip removed - use shared Skip/Abstain control */}
                         </>
                       )}
                       {/* Detective action (magnifier) - visible only to Detectives */}
@@ -779,9 +770,33 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
                         setNotificationText(`You voted for ${name}`);
                       }}>🤨</button>
                       {/* Skip/Abstain for voting per-row (also permitted) */}
-                      <button title="Skip Vote" disabled={!canSusVote} onClick={() => {
-                        if (!canSusVote) return;
-                        setCurrentVotes((s) => ({ ...s, [meRef.current.id]: null }));
+                      <button title="Skip / Abstain" onClick={() => {
+                        // If we're in a night phase and the player has a role action available, use role skip
+                        const nightPhases = ['killer', 'doctor', 'night_start', 'pre_night'];
+                        const isNight = phase && nightPhases.includes(phase);
+                        const pid = meRef.current?.id;
+                        if (isNight) {
+                          // Killer skip
+                          if (myRole === 'Killer' && !killerActed && !eliminatedIds.includes(pid)) {
+                            socket.emit('killer_action', { roomId: roomCode, player: meRef.current, skip: true });
+                            setKillerActed(true);
+                            setNotificationText('You skipped your kill');
+                            return;
+                          }
+                          // Doctor skip
+                          if (myRole === 'Doctor' && !doctorActed && !eliminatedIds.includes(pid)) {
+                            socket.emit('doctor_action', { roomId: roomCode, player: meRef.current, skip: true });
+                            setDoctorActed(true);
+                            setNotificationText('You skipped your save');
+                            return;
+                          }
+                        }
+                        // Default: abstain from voting
+                        if (!(phase === 'day' || phase === 'voting')) {
+                          // not a voting phase and no role skip available — no-op
+                          return;
+                        }
+                        setCurrentVotes((s) => ({ ...s, [pid]: null }));
                         socket.emit('cast_vote', { roomId: roomCode, player: meRef.current, targetId: null });
                         setNotificationText('You abstained from voting');
                       }}>⏭</button>
