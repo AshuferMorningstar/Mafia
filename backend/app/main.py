@@ -930,6 +930,15 @@ async def _resolve_votes(room: str):
     if not counts:
         await sio.emit('vote_result', {'result': 'no_votes'}, room=room)
         meta['phase'] = 'post_vote'
+        # schedule next night if game still active (no elimination occurred)
+        await _check_win_conditions(room)
+        if meta.get('in_game'):
+            async def _next_night_no_votes():
+                await asyncio.sleep(3)
+                m = _room_meta.setdefault(room, {})
+                if m.get('in_game') and m.get('phase') != 'ended':
+                    await _start_night_sequence(room)
+            asyncio.create_task(_next_night_no_votes())
         return
     # find max
     max_votes = max(counts.values())

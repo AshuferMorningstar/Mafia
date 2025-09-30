@@ -32,6 +32,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
   const [detectiveUsed, setDetectiveUsed] = useState(false);
   const [currentVotes, setCurrentVotes] = useState({}); // voterId -> targetId
   const [notifKey, setNotifKey] = useState(0);
+  const [noVotesCountdown, setNoVotesCountdown] = useState(null);
   const [hostId, setHostId] = useState(null);
   const [localSettings, setLocalSettings] = useState({ killCount: 1, doctorCount: 0, detectiveCount: 0 });
   const inputRef = useRef(null);
@@ -400,7 +401,24 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
       } else if (d.result === 'no_elimination') {
         text = `No elimination (tie or no votes).`;
       } else if (d.result === 'no_votes') {
-        text = `No votes were cast.`;
+        // start a local 3..1 countdown and show it in the notification area
+        let n = 3;
+        setNoVotesCountdown(n);
+        setNotificationText(`No votes cast — moving to night in ${n}s.`);
+        const iv = setInterval(() => {
+          n -= 1;
+          if (n > 0) {
+            setNoVotesCountdown(n);
+            setNotificationText(`No votes cast — moving to night in ${n}s.`);
+          } else {
+            clearInterval(iv);
+            setNoVotesCountdown(null);
+            setNotificationText(null);
+          }
+        }, 1000);
+        // attach interval id to window so cleanup on unmount can clear it
+        window.__no_votes_iv = iv;
+        return;
       }
       setNotificationText(text);
       fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/rooms/${roomCode}/players`)
@@ -419,6 +437,12 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
       socket.off('ready_state', handleReadyState);
       socket.emit('leave_room', { roomId: roomCode, player: me });
       socket.disconnect();
+      try {
+        if (window.__no_votes_iv) {
+          clearInterval(window.__no_votes_iv);
+          window.__no_votes_iv = null;
+        }
+      } catch (e) {}
     };
   }, [roomCode]);
 
@@ -580,17 +604,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
                   </div>
                 ) : null}
 
-                {/* Abstain / Skip voting button shown during voting to alive players */}
-                {phase === 'voting' && !eliminatedIds.includes(meRef.current.id) && (
-                  <div style={{marginTop:8}}>
-                    <button className="btn" onClick={() => {
-                      // send an abstain vote (no targetId)
-                      socket.emit('cast_vote', { roomId: roomCode, player: meRef.current, targetId: null });
-                      setCurrentVotes((s) => ({ ...s, [meRef.current.id]: null }));
-                      setNotificationText('You abstained from voting');
-                    }}>Abstain / Skip Vote</button>
-                  </div>
-                )}
+                {/* Global abstain button removed: per-row skip/abstain buttons remain beside each player */}
 
                 {/* role modal removed — roles are displayed inline in the role panel above */}
 
