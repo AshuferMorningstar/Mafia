@@ -131,6 +131,79 @@ async def connect(sid, environ, auth):
 @sio.event
 async def disconnect(sid):
     print('Socket disconnect:', sid)
+    # Attempt to remove the sid mapping and, if this was the player's last connection, remove them from the room
+    removed = False
+    try:
+        session = await sio.get_session(sid)
+    except Exception:
+        session = None
+    room = session.get('room') if session else None
+    player = session.get('player') if session else None
+
+    # Helper to remove pid from a specific room
+    async def _remove_pid_from_room(room, pid, player_obj):
+        meta = _room_meta.setdefault(room, {})
+        sids = meta.setdefault('player_sids', {})
+        lst = sids.get(pid) or []
+        if sid in lst:
+            try:
+                lst.remove(sid)
+            except ValueError:
+                pass
+        # if no more sids for this player, remove them from the room entirely
+        if not lst:
+            players = _rooms.get(room, [])
+            _rooms[room] = [p for p in players if p.get('id') != pid]
+            sids.pop(pid, None)
+            try:
+                await sio.emit('player_left', {'player': player_obj}, room=room)
+            except Exception:
+                pass
+            if meta.get('host_id') == pid:
+                remaining = _rooms.get(room, [])
+                meta['host_id'] = remaining[0].get('id') if remaining else None
+            try:
+                await sio.emit('room_state', {'players': _rooms.get(room, []), 'host_id': meta.get('host_id'), 'eliminated': meta.get('eliminated', {})}, room=room)
+            except Exception:
+                pass
+            return True
+        else:
+            meta['player_sids'][pid] = lst
+            return False
+
+    if room and player:
+        pid = player.get('id')
+        try:
+            removed = await _remove_pid_from_room(room, pid, player)
+        except Exception:
+            removed = False
+
+    # If not removed via session, search all rooms for the sid in player_sids lists
+    if not removed:
+        for r, meta in list(_room_meta.items()):
+            try:
+                sids = meta.get('player_sids', {})
+                for pid, sid_list in list(sids.items()):
+                    if sid in (sid_list or []):
+                        # find player object from _rooms
+                        players = _rooms.get(r, [])
+                        player_obj = next((p for p in players if p.get('id') == pid), {'id': pid, 'name': None})
+                        try:
+                            removed = await _remove_pid_from_room(r, pid, player_obj)
+                        except Exception:
+                            removed = False
+                        if removed:
+                            break
+                if removed:
+                    break
+            except Exception:
+                continue
+
+    try:
+        # best-effort leave any rooms this sid may still be in
+        await sio.leave_room(sid, room or '')
+    except Exception:
+        pass
 
 
 @sio.on('join_room')
@@ -154,12 +227,15 @@ async def handle_join(sid, data):
         lst.append(player)
     # ensure room metadata exists
     meta = _room_meta.setdefault(room, {})
-    # map player id -> sid so we can send private messages later
+    # map player id -> list of sids so we can support multiple tabs per player
     sids = meta.setdefault('player_sids', {})
     try:
         pid = player.get('id')
         if pid:
-            sids[pid] = sid
+            lst = sids.setdefault(pid, [])
+            if sid not in lst:
+                lst.append(sid)
+            sids[pid] = lst
     except Exception:
         pass
     # if no host assigned yet, the first player becomes host
@@ -373,12 +449,12 @@ async def handle_player_ready(sid, data):
             }
             for p in assigned:
                 pid = p.get('id')
-                psid = sids.get(pid)
-                if psid:
+                psids = sids.get(pid) or []
+                for psid in psids:
                     try:
-                        # send role and description privately
+                        # send role and description privately to all active tabs for this player
                         await sio.emit('your_role', {'role': p.get('role'), 'description': role_descriptions.get(p.get('role'))}, room=psid)
-                        # server-side: place killers/doctors into private rooms so server can emit to them
+                        # server-side: place each active socket into private rooms so server can emit to them
                         if p.get('role') == 'Killer':
                             try:
                                 await sio.enter_room(psid, killer_room)

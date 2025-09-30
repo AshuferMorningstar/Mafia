@@ -166,7 +166,10 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
 
     socket.off('room_state');
     socket.on('room_state', (d) => {
-      setPlayerList(d?.players || playerList);
+      // prefer authoritative player list from server; avoid falling back to the closed-over playerList variable
+      const playersFromServer = Array.isArray(d?.players) ? d.players : [];
+      console.debug('[socket] room_state received', { room: roomCode, playersFromServer, host_id: d?.host_id });
+      setPlayerList(playersFromServer);
       setHostId(d?.host_id || null);
       try {
         const elim = d?.eliminated || {};
@@ -197,12 +200,16 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
     const handlePlayerLeft = (data) => {
       const leaving = data?.player;
       if (!leaving) return;
+      console.debug('[socket] player_left', { room: roomCode, leaving });
       setPlayerList((prev) => prev.filter((p) => {
         const pid = p && typeof p === 'object' ? p.id : p;
         const pname = p && typeof p === 'object' ? p.name : p;
         const lid = leaving && typeof leaving === 'object' ? leaving.id : leaving;
         const lname = leaving && typeof leaving === 'object' ? leaving.name : leaving;
-        return !(pid === lid || (pname && lname && pname === lname));
+        // prefer id matching when available
+        if (lid) return pid !== lid;
+        if (lname) return pname !== lname;
+        return true;
       }));
     };
 
