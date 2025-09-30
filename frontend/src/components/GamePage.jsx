@@ -83,6 +83,24 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
     socket.connect();
     const me = meRef.current;
 
+    // perform a simple time sync: send request and measure RTT to estimate clock offset
+    let timeSyncStart = Date.now();
+    socket.emit('time_sync', { client_ts: timeSyncStart });
+    socket.off('time_sync_response');
+    socket.on('time_sync_response', (d) => {
+      try {
+        const now = Date.now();
+        const server_ts = d?.server_ts || null;
+        if (!server_ts) return;
+        const rtt = now - timeSyncStart;
+        // estimated server time now = server_ts + rtt/2, so offset = server_time_now - local_now
+        const estimated_server_now = server_ts + Math.floor(rtt / 2);
+        const offset = estimated_server_now - now;
+        // store offset on window so other handlers can access it (simple approach)
+        window.__server_time_offset = offset;
+      } catch (e) {}
+    });
+
     fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/rooms/${roomCode}/players`)
       .then((r) => r.json())
       .then((d) => setPlayerList(d.players || playerList))
@@ -193,11 +211,19 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
       setPlayerList(publicPlayers);
     });
 
-    socket.off('prestart_countdown');
-    socket.on('prestart_countdown', (d) => {
-      const sec = d?.seconds ?? null;
-      setPrestartCountdown(sec);
-      if (sec != null) setNotificationText(`Game starting in ${sec}...`);
+    // prestart is emitted once with start_ts and duration so clients compute synchronized countdown
+    socket.off('prestart');
+    socket.on('prestart', (d) => {
+      const duration = d?.duration ?? null;
+      const start_ts = d?.start_ts ?? null;
+      if (duration == null || start_ts == null) return;
+      const offset = window.__server_time_offset || 0;
+      const server_now_est = Date.now() + offset;
+      const end = Number(start_ts) + Number(duration) * 1000;
+      const remainingMs = Math.max(0, end - server_now_est);
+      const remainingSec = Math.ceil(remainingMs / 1000);
+      setPrestartCountdown(remainingSec);
+      if (remainingSec != null) setNotificationText(`Game starting in ${remainingSec}...`);
     });
 
     socket.off('your_role');
@@ -233,8 +259,9 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
       const duration = d.duration || null;
       setPhaseDuration(duration);
       // compute remaining time based on server start_ts to keep clients in sync
+      const offset = window.__server_time_offset || 0;
       if (d.start_ts && duration) {
-        const now = Date.now();
+        const now = Date.now() + offset;
         const end = Number(d.start_ts) + Number(duration) * 1000;
         const remainingMs = Math.max(0, end - now);
         setPhaseRemaining(Math.ceil(remainingMs / 1000));
@@ -571,71 +598,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
             </button>
           </div>
           ))}
-        {/* Action area for night roles and voting */}
-        <div style={{marginTop:12, display:'flex', gap:12, alignItems:'center'}}>
-          {/* Show target selector when it's killer or doctor phase */}
-          {(phase === 'killer' && myRole === 'Killer') && (
-            <div style={{display:'flex', gap:8, alignItems:'center'}}>
-              <select value={targetId || ''} onChange={(e) => setTargetId(e.target.value)} disabled={eliminatedIds.includes(meRef.current.id)}>
-                <option value="">Select a target</option>
-                {playerList.filter(p => p.id !== meRef.current.id).map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-              <button onClick={() => {
-                if (!targetId) return;
-                socket.emit('killer_action', { roomId: roomCode, player: meRef.current, targetId });
-              }} style={{padding:'8px 12px', borderRadius:8, background:'#e66', border:'none', color:'#fff'}} disabled={eliminatedIds.includes(meRef.current.id)}>Kill</button>
-              <div style={{color:'var(--muted)'}}>{phaseRemaining ? `${phaseRemaining}s left` : ''}</div>
-            </div>
-          )}
-
-          {(phase === 'doctor' && myRole === 'Doctor') && (
-            <div style={{display:'flex', gap:8, alignItems:'center'}}>
-              <select value={targetId || ''} onChange={(e) => setTargetId(e.target.value)} disabled={eliminatedIds.includes(meRef.current.id)}>
-                <option value="">Select someone to save</option>
-                {playerList.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-              <button onClick={() => {
-                if (!targetId) return;
-                socket.emit('doctor_action', { roomId: roomCode, player: meRef.current, targetId });
-              }} style={{padding:'8px 12px', borderRadius:8, background:'#6a6', border:'none', color:'#fff'}} disabled={eliminatedIds.includes(meRef.current.id)}>Save</button>
-              <div style={{color:'var(--muted)'}}>{phaseRemaining ? `${phaseRemaining}s left` : ''}</div>
-            </div>
-          )}
-
-          {(phase === 'killer' || phase === 'doctor' || phase === 'pre_night' || phase === 'night_start') && myRole === 'Detective' && (
-            <div style={{display:'flex', gap:8, alignItems:'center'}}>
-              <select value={targetId || ''} onChange={(e) => setTargetId(e.target.value)} disabled={eliminatedIds.includes(meRef.current.id)}>
-                <option value="">Select someone to investigate</option>
-                {playerList.map(p => (
-                  <option key={`d-${p.id}`} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-              <button onClick={() => {
-                if (!target_id) return;
-                socket.emit('detective_action', { roomId: roomCode, player: meRef.current, targetId });
-              }} style={{padding:'8px 12px', borderRadius:8, background:'#88f', border:'none', color:'#fff'}} disabled={eliminatedIds.includes(meRef.current.id)}>Investigate</button>
-            </div>
-          )}
-
-          {phase === 'voting' && (
-            <div style={{display:'flex', gap:8, alignItems:'center'}}>
-              <select value={voteTarget || ''} onChange={(e) => setVoteTarget(e.target.value)} disabled={eliminatedIds.includes(meRef.current.id)}>
-                <option value="">Select who to vote</option>
-                {playerList.map(p => (
-                  <option key={`v-${p.id}`} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-              <button onClick={() => {
-                if (!voteTarget) return;
-                socket.emit('cast_vote', { roomId: roomCode, player: meRef.current, targetId: voteTarget });
-              }} style={{padding:'8px 12px', borderRadius:8, background:'#f6d27a', border:'none', fontWeight:800}} disabled={eliminatedIds.includes(meRef.current.id)}>Vote</button>
-            </div>
-          )}
-        </div>
+        {/* Action UI removed per request: players act through other controls/flows handled by server */}
       </main>
 
       <div className="external-actions">

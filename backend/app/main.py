@@ -173,6 +173,18 @@ async def handle_join(sid, data):
     await sio.emit('room_state', {'players': _rooms.get(room, []), 'host_id': meta.get('host_id'), 'eliminated': meta.get('eliminated', {})}, room=room)
 
 
+@sio.on('time_sync')
+async def handle_time_sync(sid, data):
+    """Lightweight time sync: client may send its local timestamp; server replies with server time.
+    Client should compute RTT and clock offset using the round-trip measurement.
+    """
+    try:
+        now = int(time.time() * 1000)
+        await sio.emit('time_sync_response', {'server_ts': now}, room=sid)
+    except Exception:
+        pass
+
+
 @sio.on('leave_room')
 async def handle_leave(sid, data):
     room = data.get('roomId')
@@ -320,9 +332,10 @@ async def handle_player_ready(sid, data):
             meta = _room_meta.setdefault(room, {})
             # small countdown (3..1) emitted each second so clients can show it
             try:
-                for sec in (3, 2, 1):
-                    await sio.emit('prestart_countdown', {'seconds': sec}, room=room)
-                    await asyncio.sleep(1)
+                # Emit a single prestart event with start timestamp and duration so clients can sync the countdown
+                prestart_duration = 3
+                prestart_start = int(time.time() * 1000)
+                await sio.emit('prestart', {'duration': prestart_duration, 'start_ts': prestart_start}, room=room)
             except Exception:
                 pass
 
@@ -608,7 +621,10 @@ async def _resolve_night_and_start_day(room: str):
 
     # start day after small pause
     meta['phase'] = 'day'
-    await sio.emit('phase', {'phase': 'day', 'message': 'Day has begun — discuss and then vote'}, room=room)
+    start_ts = int(time.time() * 1000)
+    # default discussion window can be controlled via settings; use 180s if not set
+    discussion_duration = int(meta.get('settings', {}).get('discussionDuration', 180)) if meta.get('settings') else 180
+    await sio.emit('phase', {'phase': 'day', 'message': 'Day has begun — discuss and then vote', 'duration': discussion_duration, 'start_ts': start_ts}, room=room)
 
     # allow public chat again; send updated room state and players list
     await sio.emit('room_state', {'players': _rooms.get(room, []), 'host_id': meta.get('host_id'), 'eliminated': meta.get('eliminated', {})}, room=room)
@@ -624,7 +640,8 @@ async def _start_voting_phase(room: str, duration: int = 120):
     meta = _room_meta.setdefault(room, {})
     meta['phase'] = 'voting'
     meta['votes'] = {}
-    await sio.emit('phase', {'phase': 'voting', 'message': 'Cast your vote: who do you think is a killer?', 'duration': duration}, room=room)
+    start_ts = int(time.time() * 1000)
+    await sio.emit('phase', {'phase': 'voting', 'message': 'Cast your vote: who do you think is a killer?', 'duration': duration, 'start_ts': start_ts}, room=room)
 
     async def voting_timer():
         try:
