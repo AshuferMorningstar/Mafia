@@ -634,7 +634,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
                 const canKill = myRole === 'Killer' && phase === 'killer' && !killerActed && !isElim && !eliminatedIds.includes(meRef.current.id);
                 const canSave = myRole === 'Doctor' && phase === 'doctor' && !doctorActed && !isElim && !eliminatedIds.includes(meRef.current.id);
                 const canInvestigate = myRole === 'Detective' && (phase === 'killer' || phase === 'doctor' || phase === 'night_start' || phase === 'pre_night') && !detectiveUsed && !isElim && !eliminatedIds.includes(meRef.current.id);
-                const canSusVote = phase === 'day' && !isElim && !eliminatedIds.includes(meRef.current.id) && !(currentVotes[meRef.current.id] === id);
+                const canSusVote = (phase === 'day' || phase === 'voting') && !isElim && !eliminatedIds.includes(meRef.current.id) && !(currentVotes[meRef.current.id] === id);
                 return (
                   <li key={`${id}-${i}`} className="lobby-player-item" style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:12}}>
                     <div style={isElim ? {textDecoration: 'line-through', opacity: 0.6} : {}}>{name} {isElim ? '💀' : ''}
