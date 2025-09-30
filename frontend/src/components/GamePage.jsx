@@ -110,11 +110,12 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
           return false;
         });
         if (exists) return prev;
-        // if this is a System message, surface it in the notification area unless we are in a persistent phase
+        // if this is a System message, surface it in the notification area and do NOT append it to the chat messages
         if (message?.from?.name === 'System' && message?.text) {
           if (!persistentPhases.includes(phase) && prestartCountdown == null) {
             setNotificationText(message.text);
           }
+          return prev; // skip adding to chat history
         }
         return [...prev, message];
       });
@@ -166,7 +167,6 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
       if (!d) return;
       const text = `Game over! Winner: ${d.winner}`;
       setNotificationText(text);
-      setMessages((prev) => [...prev, { id: `gameover-${Date.now()}`, from: { name: 'System' }, text }]);
       setPhase('ended');
       // show persistent win banner until dismissed
       setWinBanner({ winner: d.winner, message: text });
@@ -230,8 +230,17 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
       if (!d) return;
       const p = d.phase;
       setPhase(p);
-      setPhaseDuration(d.duration || null);
-      setPhaseRemaining(d.duration || null);
+      const duration = d.duration || null;
+      setPhaseDuration(duration);
+      // compute remaining time based on server start_ts to keep clients in sync
+      if (d.start_ts && duration) {
+        const now = Date.now();
+        const end = Number(d.start_ts) + Number(duration) * 1000;
+        const remainingMs = Math.max(0, end - now);
+        setPhaseRemaining(Math.ceil(remainingMs / 1000));
+      } else {
+        setPhaseRemaining(duration || null);
+      }
       const text = d.message || `Phase: ${p}`;
       // For certain phases we want explicit public wording and to ensure all clients see it
       if (p === 'killer') {
@@ -248,7 +257,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
         // otherwise set transient notification
         setNotificationText(text);
       }
-      setMessages((prev) => [...prev, { id: `phase-${Date.now()}`, from: { name: 'System' }, text }]);
+      // system phase announcements are shown in the notification card only (do not append to chat history)
       if (p === 'day') {
         setMessages((prev) => prev.filter((m) => !m.scope || m.scope === 'public'));
       }
@@ -270,8 +279,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
       } else {
         text = `No one was killed last night.`;
       }
-      setNotificationText(text);
-      setMessages((prev) => [...prev, { id: `night-${Date.now()}`, from: { name: 'System' }, text }]);
+  setNotificationText(text);
       // update eliminated list if provided in the payload (server emits room_state too)
       try {
         if (d.result === 'killed' && d.player && d.player.id) setEliminatedIds((s) => Array.from(new Set([...s, d.player.id])));
@@ -309,7 +317,6 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
         text = `No votes were cast.`;
       }
       setNotificationText(text);
-      setMessages((prev) => [...prev, { id: `vote-${Date.now()}`, from: { name: 'System' }, text }]);
       fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/rooms/${roomCode}/players`)
         .then((r) => r.json())
         .then((d) => setPlayerList(d.players || playerList))

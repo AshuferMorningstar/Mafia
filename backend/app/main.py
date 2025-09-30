@@ -397,7 +397,8 @@ async def _start_night_sequence(room: str):
     """Orchestrate night phases: announce night, run killer phase, run doctor phase, resolve night, then start day and voting."""
     meta = _room_meta.setdefault(room, {})
     meta['phase'] = 'night_start'
-    await sio.emit('phase', {'phase': 'night_start', 'message': "It's night — close your eyes."}, room=room)
+    start_ts = int(time.time() * 1000)
+    await sio.emit('phase', {'phase': 'night_start', 'message': "It's night — close your eyes.", 'duration': 3, 'start_ts': start_ts}, room=room)
     # wait 3s then start killer phase
     await asyncio.sleep(3)
     await _start_killer_phase(room)
@@ -408,10 +409,11 @@ async def _start_killer_phase(room: str, duration: int = 120):
     meta['phase'] = 'killer'
     meta['night_kill'] = None
     # notify everyone that killer phase has started (public notification + timer)
-    await sio.emit('phase', {'phase': 'killer', 'message': 'Night has fallen — Killers, choose your target', 'duration': duration}, room=room)
+    start_ts = int(time.time() * 1000)
+    await sio.emit('phase', {'phase': 'killer', 'message': 'Night has fallen — Killers, choose your target', 'duration': duration, 'start_ts': start_ts}, room=room)
     # also notify killer private room so killers get private chat context
     if meta.get('killer_room'):
-        await sio.emit('phase', {'phase': 'killer', 'message': 'Killer, open your eyes and choose a target', 'duration': duration}, room=meta.get('killer_room'))
+        await sio.emit('phase', {'phase': 'killer', 'message': 'Killer, open your eyes and choose a target', 'duration': duration, 'start_ts': start_ts}, room=meta.get('killer_room'))
 
     async def killer_timer():
         try:
@@ -460,10 +462,11 @@ async def _start_doctor_phase(room: str, duration: int = 120):
     meta['phase'] = 'doctor'
     meta['doctor_save'] = None
     # notify everyone that doctor phase has started (public notification + timer)
-    await sio.emit('phase', {'phase': 'doctor', 'message': 'Doctor: choose someone to save', 'duration': duration}, room=room)
+    start_ts = int(time.time() * 1000)
+    await sio.emit('phase', {'phase': 'doctor', 'message': 'Doctor: choose someone to save', 'duration': duration, 'start_ts': start_ts}, room=room)
     # also notify doctor private room so doctors get private chat context
     if meta.get('doctor_room'):
-        await sio.emit('phase', {'phase': 'doctor', 'message': 'Doctor, choose someone to save', 'duration': duration}, room=meta.get('doctor_room'))
+        await sio.emit('phase', {'phase': 'doctor', 'message': 'Doctor, choose someone to save', 'duration': duration, 'start_ts': start_ts}, room=meta.get('doctor_room'))
 
     async def doctor_timer():
         try:
