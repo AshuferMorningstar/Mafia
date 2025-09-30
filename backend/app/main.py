@@ -557,6 +557,12 @@ async def _start_killer_phase(room: str, duration: int = 120):
     meta['actions'] = meta.get('actions', {})
     meta['actions']['killer'] = {}
     meta['night_kill'] = None
+    # clear any previous doctor save or doctor actions so stale data doesn't carry between rounds
+    meta['doctor_save'] = None
+    try:
+        meta['actions']['doctor'] = {}
+    except Exception:
+        meta.setdefault('actions', {})['doctor'] = {}
     # notify everyone that killer phase has started (public notification + timer)
     start_ts = int(time.time() * 1000)
     await sio.emit('phase', {'phase': 'killer', 'message': 'Night has fallen — Killers, choose your target', 'duration': duration, 'start_ts': start_ts}, room=room)
@@ -782,12 +788,27 @@ async def _resolve_night_and_start_day(room: str):
         if sb:
             saved_by = id_to_player.get(sb)
 
+    # Validate that the doctor save was performed by an alive Doctor. If the saving doctor is no longer alive
+    # or no longer has the Doctor role, ignore the save to avoid stale saves from prior rounds.
+    saved_valid = False
+    try:
+        if saved and isinstance(saved, dict):
+            sb_id = saved.get('by')
+            if sb_id:
+                # assigned roles mapping indicates each player's role
+                assigned_roles = meta.get('assigned_roles', {})
+                # doctor must still be alive (not in eliminated) and still assigned as 'Doctor'
+                if assigned_roles.get(sb_id) == 'Doctor' and not meta.get('eliminated', {}).get(sb_id):
+                    saved_valid = True
+    except Exception:
+        saved_valid = False
+
     # determine outcome by comparing targeted ids
     outcome = {'result': 'none', 'player': None}
     ktarget = killed.get('target') if isinstance(killed, dict) else killed
     starget = saved.get('target') if isinstance(saved, dict) else saved
-    if ktarget and starget and ktarget == starget:
-        # doctor saved the victim
+    if ktarget and starget and ktarget == starget and saved_valid:
+        # doctor saved the victim (only if the save came from a live doctor)
         outcome['result'] = 'saved'
         outcome['player'] = saved_player
     elif ktarget:

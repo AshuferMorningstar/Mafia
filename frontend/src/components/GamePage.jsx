@@ -736,32 +736,75 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
         </section>
 
         {activeTab === 'chat' && (
-          /* show chat input only if public day OR if private phase for the user's role */
-          ((phase === 'day' || phase === null) || (phase === 'killer' && myRole === 'Killer') || (phase === 'doctor' && myRole === 'Doctor')) && (
-            <div className="chat-input-row chat-input-bottom">
-            {/* disable chat input and send button if player is eliminated */}
-            <input id="game-chat-input" ref={inputRef} name="chatMessage" aria-label="Type a message" className="chat-input" placeholder="Type a message..." style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ccc', marginRight: '8px' }} disabled={eliminatedIds.includes(meRef.current.id)} />
+          // show chat input always for the chat tab; sending is enabled only when allowed
+          <div className="chat-input-row chat-input-bottom">
+            {/* disable chat input if player is eliminated */}
+            <input
+              id="game-chat-input"
+              ref={inputRef}
+              name="chatMessage"
+              aria-label="Type a message"
+              className="chat-input"
+              placeholder="Type a message..."
+              style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #ccc', marginRight: '8px' }}
+              disabled={eliminatedIds.includes(meRef.current.id)}
+              onKeyDown={(e) => {
+                // send on Enter (no Shift+Enter) when allowed
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  // compute whether sending is allowed (public allowed during day/null, private if killer/doctor in their phases)
+                  const canSendPublic = (phase === 'day' || phase === null);
+                  const canSendPrivate = (phase === 'killer' && myRole === 'Killer') || (phase === 'doctor' && myRole === 'Doctor');
+                  const canSend = !eliminatedIds.includes(meRef.current.id) && (canSendPublic || canSendPrivate);
+                  if (!canSend) {
+                    setNotificationText('Cannot send public messages during night.');
+                    return;
+                  }
+                  const text = inputRef.current?.value;
+                  if (!text) return;
+                  const me = meRef.current;
+                  const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
+                  const message = { id: uniqueId, from: { id: me.id, name: me.name }, text, ts: Date.now() };
+                  let scope = 'public';
+                  if (canSendPrivate) {
+                    if (phase === 'killer' && myRole === 'Killer') scope = 'killers';
+                    if (phase === 'doctor' && myRole === 'Doctor') scope = 'doctors';
+                  }
+                  socket.emit('send_message', { roomId: roomCode, message: { ...message, scope }, scope });
+                  if (inputRef.current) inputRef.current.value = '';
+                }
+              }}
+            />
             <button
               onClick={() => {
+                const canSendPublic = (phase === 'day' || phase === null);
+                const canSendPrivate = (phase === 'killer' && myRole === 'Killer') || (phase === 'doctor' && myRole === 'Doctor');
+                const canSend = !eliminatedIds.includes(meRef.current.id) && (canSendPublic || canSendPrivate);
+                if (!canSend) {
+                  setNotificationText('Cannot send public messages during night.');
+                  return;
+                }
                 const text = inputRef.current?.value;
                 if (!text) return;
                 const me = meRef.current;
                 const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
                 const message = { id: uniqueId, from: { id: me.id, name: me.name }, text, ts: Date.now() };
                 let scope = 'public';
-                if (phase === 'killer' && myRole === 'Killer') scope = 'killers';
-                if (phase === 'doctor' && myRole === 'Doctor') scope = 'doctors';
+                if (canSendPrivate) {
+                  if (phase === 'killer' && myRole === 'Killer') scope = 'killers';
+                  if (phase === 'doctor' && myRole === 'Doctor') scope = 'doctors';
+                }
                 socket.emit('send_message', { roomId: roomCode, message: { ...message, scope }, scope });
                 if (inputRef.current) inputRef.current.value = '';
               }}
               className="chat-send-btn"
               style={{ padding: '10px 18px', borderRadius: '8px', background: '#f6d27a', color: '#2b1f12', fontWeight: 700, border: 'none', cursor: 'pointer' }}
-              disabled={eliminatedIds.includes(meRef.current.id)}
+              disabled={eliminatedIds.includes(meRef.current.id) || (!((phase === 'day' || phase === null) || (phase === 'killer' && myRole === 'Killer') || (phase === 'doctor' && myRole === 'Doctor')))}
             >
               Send
             </button>
           </div>
-          ))}
+        )}
         {/* Action UI removed per request: players act through other controls/flows handled by server */}
       </main>
 
