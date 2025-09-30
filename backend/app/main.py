@@ -357,26 +357,15 @@ async def handle_message(sid, data):
     except Exception:
         pass
 
-    # Night restrictions: public chat is locked during night
-    if phase and phase.startswith('night'):
-        if scope == 'public':
-            # public chat is closed during night
-            try:
-                await sio.emit('chat_blocked', {'message': 'Public chat is closed during night'}, room=sid)
-            except Exception:
-                pass
-            return
-        elif scope == 'killers':
-            # emit only to killer private room
-            kr = meta.get('killer_room')
-            if kr:
-                await sio.emit('new_message', {'message': message}, room=kr)
-            return
-        elif scope == 'doctors':
-            dr = meta.get('doctor_room')
-            if dr:
-                await sio.emit('new_message', {'message': message}, room=dr)
-            return
+    # Night restrictions: all chat (public and private) is closed during explicit night phases
+    night_phases = ('night_start', 'killer', 'doctor', 'pre_night')
+    if phase and phase in night_phases:
+        # simply ignore all chat sends during night phases
+        try:
+            await sio.emit('chat_blocked', {'message': 'Chat is closed during the night phase.'}, room=sid)
+        except Exception:
+            pass
+        return
 
     # Daytime or public messages: save and broadcast publicly
     try:
