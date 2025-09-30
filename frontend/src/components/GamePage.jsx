@@ -218,7 +218,12 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
     socket.off('game_over');
     socket.on('game_over', (d) => {
       if (!d) return;
-      const text = `Game over! Winner: ${d.winner}`;
+      let text = `Game over! Winner: ${d.winner}`;
+      // If killers won and server provided killer names, append them
+      if (d.winner === 'Killers' && Array.isArray(d.killers) && d.killers.length > 0) {
+        const names = d.killers.map((k) => k.name).filter(Boolean).join(', ');
+        if (names) text = `Killers win! Survivors eliminated by: ${names}`;
+      }
       setNotificationText(text);
       setPhase('ended');
       // show persistent win banner until dismissed
@@ -499,6 +504,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
       <header className="lobby-main-header">
         <h1 className="lobby-hero-title welcome-title metallic-gradient">Mafia Game Room</h1>
         <div className="lobby-roomcode" style={{marginTop:6}}>ROOM CODE: <span className="code-text">{roomCode}</span></div>
+  {/* (removed per user request) */}
         <div className="room-code-actions" style={{marginTop:8}}>
           <button className="room-action-btn" onClick={doCopy} title="Copy room link" aria-label="Copy room link">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="18" height="18" aria-hidden>
@@ -644,7 +650,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
                 const canSusVote = (phase === 'day' || phase === 'voting') && !isElim && !eliminatedIds.includes(meRef.current.id) && !(currentVotes[meRef.current.id] === id);
                 return (
                   <li key={`${id}-${i}`} className="lobby-player-item" style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:12}}>
-                    <div style={isElim ? {textDecoration: 'line-through', opacity: 0.6} : {}}>{name} {isElim ? '💀' : ''}
+                    <div style={isElim ? {textDecoration: 'line-through', opacity: 0.6} : {}}>{name} {id === meRef.current?.id ? <span style={{fontWeight:800, marginLeft:6}}>(you)</span> : ''} {isElim ? '💀' : ''}
                       {isHost && <span style={{marginLeft:8, color:'#ffd27a', fontWeight:700}}>HOST</span>}
                       {isReady && !inGame && <span style={{marginLeft:8, color:'#9be', fontWeight:700}}>READY</span>}
                     </div>

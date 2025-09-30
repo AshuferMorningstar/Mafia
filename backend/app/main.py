@@ -1014,8 +1014,13 @@ async def _check_win_conditions(room: str):
         meta['in_game'] = False
         return
     if killers >= civilians:
-        # killers win
-        await sio.emit('game_over', {'winner': 'Killers'}, room=room)
+        # killers win - include alive killer names so clients can announce them
+        # find alive killer players
+        all_players = _rooms.get(room, [])
+        assigned = meta.get('assigned_roles', {})
+        alive_killers = [p for p in all_players if not meta.get('eliminated', {}).get(p.get('id')) and assigned.get(p.get('id')) == 'Killer']
+        killer_list = [{'id': p.get('id'), 'name': p.get('name')} for p in alive_killers]
+        await sio.emit('game_over', {'winner': 'Killers', 'killers': killer_list}, room=room)
         meta['phase'] = 'ended'
         meta['in_game'] = False
         return
