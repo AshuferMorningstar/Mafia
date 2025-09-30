@@ -420,6 +420,9 @@ async def _start_night_sequence(room: str):
 async def _start_killer_phase(room: str, duration: int = 120):
     meta = _room_meta.setdefault(room, {})
     meta['phase'] = 'killer'
+    # reset per-round actions tracker
+    meta['actions'] = meta.get('actions', {})
+    meta['actions']['killer'] = {}
     meta['night_kill'] = None
     # notify everyone that killer phase has started (public notification + timer)
     start_ts = int(time.time() * 1000)
@@ -444,8 +447,10 @@ async def _start_killer_phase(room: str, duration: int = 120):
 async def handle_killer_action(sid, data):
     room = data.get('roomId')
     player = data.get('player')
-    target_id = data.get('targetId')
-    if not room or not player or not target_id:
+    # targetId may be omitted or null to indicate an explicit skip; or client may send { skip: true }
+    target_id = data.get('targetId') if 'targetId' in data else None
+    skip = bool(data.get('skip')) or (('targetId' in data) and data.get('targetId') is None)
+    if not room or not player:
         return
     meta = _room_meta.setdefault(room, {})
     # only accept during killer phase
@@ -458,12 +463,31 @@ async def handle_killer_action(sid, data):
         except Exception:
             pass
         return
+    # ensure per-round actions tracker exists
+    actions = meta.setdefault('actions', {})
+    killer_actions = actions.setdefault('killer', {})
+    # if this killer (or any killer in the room) already acted this round, block further actions
+    if killer_actions:
+        try:
+            await sio.emit('action_blocked', {'message': 'A kill has already been recorded this round.'}, room=sid)
+        except Exception:
+            pass
+        return
     pid = player.get('id')
     assigned = meta.get('assigned_roles', {})
     if assigned.get(pid) != 'Killer':
         return
     # record the chosen kill (and actor) and cancel killer timer for early move to doctor
-    meta['night_kill'] = {'target': target_id, 'by': pid}
+    if skip:
+        meta['night_kill'] = {'target': None, 'by': pid, 'skipped': True}
+        killer_actions[pid] = None
+    else:
+        meta['night_kill'] = {'target': target_id, 'by': pid}
+        killer_actions[pid] = target_id
+    try:
+        await sio.emit('action_accepted', {'action': 'killer', 'targetId': target_id}, room=sid)
+    except Exception:
+        pass
     task = meta.pop('killer_task', None)
     if task and not task.done():
         task.cancel()
@@ -491,14 +515,17 @@ async def _start_doctor_phase(room: str, duration: int = 120):
 
     task = asyncio.create_task(doctor_timer())
     meta['doctor_task'] = task
+    # reset doctor actions container for new round
+    meta['actions']['doctor'] = {}
 
 
 @sio.on('doctor_action')
 async def handle_doctor_action(sid, data):
     room = data.get('roomId')
     player = data.get('player')
-    target_id = data.get('targetId')
-    if not room or not player or not target_id:
+    target_id = data.get('targetId') if 'targetId' in data else None
+    skip = bool(data.get('skip')) or (('targetId' in data) and data.get('targetId') is None)
+    if not room or not player:
         return
     meta = _room_meta.setdefault(room, {})
     if meta.get('phase') != 'doctor':
@@ -514,8 +541,26 @@ async def handle_doctor_action(sid, data):
         except Exception:
             pass
         return
-    # record doctor save target and which doctor performed the save
-    meta['doctor_save'] = {'target': target_id, 'by': pid}
+    # per-round action enforcement
+    actions = meta.setdefault('actions', {})
+    doctor_actions = actions.setdefault('doctor', {})
+    if doctor_actions.get(pid):
+        try:
+            await sio.emit('action_blocked', {'message': 'You have already acted this round.'}, room=sid)
+        except Exception:
+            pass
+        return
+    # record doctor save target and which doctor performed the save (support skip)
+    if skip:
+        meta['doctor_save'] = {'target': None, 'by': pid, 'skipped': True}
+        doctor_actions[pid] = None
+    else:
+        meta['doctor_save'] = {'target': target_id, 'by': pid}
+        doctor_actions[pid] = target_id
+    try:
+        await sio.emit('action_accepted', {'action': 'doctor', 'targetId': target_id}, room=sid)
+    except Exception:
+        pass
     task = meta.pop('doctor_task', None)
     if task and not task.done():
         task.cancel()
@@ -545,14 +590,28 @@ async def handle_detective_action(sid, data):
         except Exception:
             pass
         return
+    # per-round / one-time enforcement for detective
+    actions = meta.setdefault('actions', {})
+    detective_actions = actions.setdefault('detective', {})
+    # If detective already used their ability (treat as one-time), block
+    if detective_actions.get(pid):
+        try:
+            await sio.emit('action_blocked', {'message': 'Detective ability already used.'}, room=sid)
+        except Exception:
+            pass
+        return
     # Determine if target is a killer
     role = assigned.get(target_id)
     is_killer = (role == 'Killer')
+    # record detective use
+    meta['detective_check'] = {'target': target_id, 'by': pid}
+    detective_actions[pid] = target_id
     # send result privately to detective
     sids = meta.get('player_sids', {})
     psid = sids.get(pid)
     try:
         await sio.emit('detective_result', {'targetId': target_id, 'is_killer': is_killer, 'role': role}, room=psid)
+        await sio.emit('action_accepted', {'action': 'detective', 'targetId': target_id}, room=sid)
     except Exception:
         pass
 
@@ -658,8 +717,9 @@ async def _start_voting_phase(room: str, duration: int = 120):
 async def handle_cast_vote(sid, data):
     room = data.get('roomId')
     voter = data.get('player')
-    target = data.get('targetId')
-    if not room or not voter or not target:
+    # allow null/omitted to indicate abstain/skip
+    target = data.get('targetId') if 'targetId' in data else None
+    if not room or not voter:
         return
     meta = _room_meta.setdefault(room, {})
     if meta.get('phase') != 'voting':
@@ -672,7 +732,17 @@ async def handle_cast_vote(sid, data):
         except Exception:
             pass
         return
+    # record the vote in both the canonical votes mapping and the per-round actions tracker
+    prev = meta.setdefault('votes', {}).get(vid)
     meta.setdefault('votes', {})[vid] = target
+    actions = meta.setdefault('actions', {})
+    vote_actions = actions.setdefault('votes', {})
+    vote_actions[vid] = target
+    try:
+        await sio.emit('vote_cast', {'by': vid, 'targetId': target, 'previous': prev}, room=room)
+        await sio.emit('action_accepted', {'action': 'vote', 'targetId': target, 'previous': prev}, room=sid)
+    except Exception:
+        pass
     # optional early resolution: if all alive players have voted, resolve early
     # determine alive (non-eliminated) players
     all_players = _rooms.get(room, [])
@@ -691,6 +761,9 @@ async def _resolve_votes(room: str):
     # count votes
     counts = {}
     for v in votes.values():
+        # ignore abstain/skip (None) votes
+        if v is None:
+            continue
         counts[v] = counts.get(v, 0) + 1
     if not counts:
         await sio.emit('vote_result', {'result': 'no_votes'}, room=room)

@@ -27,6 +27,10 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
   const [targetId, setTargetId] = useState(null);
   const [voteTarget, setVoteTarget] = useState(null);
   const [eliminatedIds, setEliminatedIds] = useState([]);
+  const [killerActed, setKillerActed] = useState(false);
+  const [doctorActed, setDoctorActed] = useState(false);
+  const [detectiveUsed, setDetectiveUsed] = useState(false);
+  const [currentVotes, setCurrentVotes] = useState({}); // voterId -> targetId
   const [notifKey, setNotifKey] = useState(0);
   const [hostId, setHostId] = useState(null);
   const [localSettings, setLocalSettings] = useState({ killCount: 1, doctorCount: 0, detectiveCount: 0 });
@@ -521,6 +525,18 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
                   </div>
                 ) : null}
 
+                {/* Abstain / Skip voting button shown during voting to alive players */}
+                {phase === 'voting' && !eliminatedIds.includes(meRef.current.id) && (
+                  <div style={{marginTop:8}}>
+                    <button className="btn" onClick={() => {
+                      // send an abstain vote (no targetId)
+                      socket.emit('cast_vote', { roomId: roomCode, player: meRef.current, targetId: null });
+                      setCurrentVotes((s) => ({ ...s, [meRef.current.id]: null }));
+                      setNotificationText('You abstained from voting');
+                    }}>Abstain / Skip Vote</button>
+                  </div>
+                )}
+
                 {/* role modal removed — roles are displayed inline in the role panel above */}
 
               </div>
@@ -539,20 +555,79 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
         <section className="lobby-card-body" style={activeTab === 'chat' ? {display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0} : {}}>
           {activeTab === 'players' ? (
             <ul className="lobby-players-list">
-                    {playerList.map((p, i) => {
-                      const name = p && typeof p === 'object' ? p.name : p;
-                      const id = p && typeof p === 'object' ? p.id : `${name}-${i}`;
-                      const isHost = id && hostId && id === hostId;
-                      const isReady = readyState && readyState.includes(id);
-                      const isElim = eliminatedIds.includes(id);
-                      return (
-                        <li key={`${id}-${i}`} className="lobby-player-item">
-                          <span style={isElim ? {textDecoration: 'line-through', opacity: 0.6} : {}}>{name} {isElim ? '💀' : ''}</span>
-                          {isHost && <span style={{marginLeft:8, color:'#ffd27a', fontWeight:700}}>HOST</span>}
-                          {isReady && !inGame && <span style={{marginLeft:8, color:'#9be', fontWeight:700}}>READY</span>}
-                        </li>
-                      );
-                    })}
+              {playerList.map((p, i) => {
+                const name = p && typeof p === 'object' ? p.name : p;
+                const id = p && typeof p === 'object' ? p.id : `${name}-${i}`;
+                const isHost = id && hostId && id === hostId;
+                const isReady = readyState && readyState.includes(id);
+                const isElim = eliminatedIds.includes(id);
+                // determine which action buttons should be enabled for this client
+                const canKill = myRole === 'Killer' && phase === 'killer' && !killerActed && !isElim && !eliminatedIds.includes(meRef.current.id);
+                const canSave = myRole === 'Doctor' && phase === 'doctor' && !doctorActed && !isElim && !eliminatedIds.includes(meRef.current.id);
+                const canInvestigate = myRole === 'Detective' && (phase === 'killer' || phase === 'doctor' || phase === 'night_start' || phase === 'pre_night') && !detectiveUsed && !isElim && !eliminatedIds.includes(meRef.current.id);
+                const canSusVote = phase === 'day' && !isElim && !eliminatedIds.includes(meRef.current.id) && !(currentVotes[meRef.current.id] === id);
+                return (
+                  <li key={`${id}-${i}`} className="lobby-player-item" style={{display:'flex', alignItems:'center', justifyContent:'space-between', gap:12}}>
+                    <div style={isElim ? {textDecoration: 'line-through', opacity: 0.6} : {}}>{name} {isElim ? '💀' : ''}
+                      {isHost && <span style={{marginLeft:8, color:'#ffd27a', fontWeight:700}}>HOST</span>}
+                      {isReady && !inGame && <span style={{marginLeft:8, color:'#9be', fontWeight:700}}>READY</span>}
+                    </div>
+                    <div style={{display:'flex', gap:8}}>
+                      {/* Killer action (knife) - visible only to Killers */}
+                      {myRole === 'Killer' && (
+                        <>
+                          <button title="Kill" disabled={!canKill} onClick={() => {
+                            if (!canKill) return;
+                            socket.emit('killer_action', { roomId: roomCode, player: meRef.current, targetId: id });
+                            setKillerActed(true);
+                            setNotificationText(`You targeted ${name}`);
+                          }}>🔪</button>
+                          <button title="Skip Kill" disabled={!canKill} onClick={() => {
+                            if (!canKill) return;
+                            socket.emit('killer_action', { roomId: roomCode, player: meRef.current, skip: true });
+                            setKillerActed(true);
+                            setNotificationText(`You skipped killing this night`);
+                          }}>⏭</button>
+                        </>
+                      )}
+                      {/* Doctor action (bandage) - visible only to Doctors */}
+                      {myRole === 'Doctor' && (
+                        <>
+                          <button title="Save" disabled={!canSave} onClick={() => {
+                            if (!canSave) return;
+                            socket.emit('doctor_action', { roomId: roomCode, player: meRef.current, targetId: id });
+                            setDoctorActed(true);
+                            setNotificationText(`You chose to save ${name}`);
+                          }}>🩹</button>
+                          <button title="Skip Save" disabled={!canSave} onClick={() => {
+                            if (!canSave) return;
+                            socket.emit('doctor_action', { roomId: roomCode, player: meRef.current, skip: true });
+                            setDoctorActed(true);
+                            setNotificationText(`You skipped saving this night`);
+                          }}>⏭</button>
+                        </>
+                      )}
+                      {/* Detective action (magnifier) - visible only to Detectives */}
+                      {myRole === 'Detective' && (
+                        <button title="Investigate" disabled={!canInvestigate} onClick={() => {
+                          if (!canInvestigate) return;
+                          socket.emit('detective_action', { roomId: roomCode, player: meRef.current, targetId: id });
+                          setDetectiveUsed(true);
+                          setNotificationText(`You investigated ${name}`);
+                        }}>🔍</button>
+                      )}
+                      {/* Sus/vote button - visible during day to everyone alive */}
+                      <button title="Sus / Vote" disabled={!canSusVote} onClick={() => {
+                        if (!canSusVote) return;
+                        // locally track current vote and emit cast_vote
+                        setCurrentVotes((s) => ({ ...s, [meRef.current.id]: id }));
+                        socket.emit('cast_vote', { roomId: roomCode, player: meRef.current, targetId: id });
+                        setNotificationText(`You voted for ${name}`);
+                      }}>🤨</button>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <>
