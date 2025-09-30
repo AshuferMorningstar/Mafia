@@ -543,9 +543,10 @@ async def _start_night_sequence(room: str):
     meta = _room_meta.setdefault(room, {})
     meta['phase'] = 'night_start'
     start_ts = int(time.time() * 1000)
-    await sio.emit('phase', {'phase': 'night_start', 'message': "It's night — close your eyes.", 'duration': 3, 'start_ts': start_ts}, room=room)
-    # wait 3s then start killer phase
-    await asyncio.sleep(3)
+    # announce night and give players a little longer to close eyes per game flow
+    await sio.emit('phase', {'phase': 'night_start', 'message': "Night time - Everyone close your eyes", 'duration': 5, 'start_ts': start_ts}, room=room)
+    # wait 5s then start killer phase
+    await asyncio.sleep(5)
     await _start_killer_phase(room)
 
 
@@ -588,7 +589,8 @@ async def handle_killer_action(sid, data):
     # only accept during killer phase
     if meta.get('phase') != 'killer':
         return
-    # block eliminated players from acting
+    # identify actor and block eliminated players from acting
+    pid = player.get('id')
     if meta.get('eliminated', {}).get(pid):
         try:
             await sio.emit('action_blocked', {'message': 'You are eliminated and cannot act.'}, room=sid)
@@ -780,18 +782,17 @@ async def _resolve_night_and_start_day(room: str):
         if sb:
             saved_by = id_to_player.get(sb)
 
-    # determine outcome
-    outcome = {}
-    if killed and saved and killed == saved:
+    # determine outcome by comparing targeted ids
+    outcome = {'result': 'none', 'player': None}
+    ktarget = killed.get('target') if isinstance(killed, dict) else killed
+    starget = saved.get('target') if isinstance(saved, dict) else saved
+    if ktarget and starget and ktarget == starget:
         # doctor saved the victim
         outcome['result'] = 'saved'
         outcome['player'] = saved_player
-    elif killed:
+    elif ktarget:
         outcome['result'] = 'killed'
         outcome['player'] = killed_player
-    else:
-        outcome['result'] = 'none'
-        outcome['player'] = None
 
     # broadcast night resolution to all players
     if outcome['result'] == 'killed' and outcome['player']:
@@ -820,21 +821,37 @@ async def _resolve_night_and_start_day(room: str):
     except Exception:
         pass
 
-    # start day after small pause
-    meta['phase'] = 'day'
+    # Begin day: signal players to open eyes, give a short window before showing night summary
     start_ts = int(time.time() * 1000)
-    # default discussion window can be controlled via settings; use 180s if not set
-    discussion_duration = int(meta.get('settings', {}).get('discussionDuration', 180)) if meta.get('settings') else 180
-    await sio.emit('phase', {'phase': 'day', 'message': 'Day has begun — discuss and then vote', 'duration': discussion_duration, 'start_ts': start_ts}, room=room)
+    meta['phase'] = 'day_start'
+    await sio.emit('phase', {'phase': 'day_start', 'message': 'Day time - Open your eyes', 'duration': 5, 'start_ts': start_ts}, room=room)
+    # small pause for clients to show day transition
+    await asyncio.sleep(5)
 
-    # allow public chat again; send updated room state and players list
+    # send a concise night summary that clients can display for 5s
+    summary = {}
+    if outcome['result'] == 'killed' and outcome['player']:
+        summary['message'] = f"{outcome['player'].get('name')} was killed last night"
+        summary['killed'] = {'id': outcome['player'].get('id'), 'name': outcome['player'].get('name'), 'role': meta.get('assigned_roles', {}).get(outcome['player'].get('id'))}
+        summary['doctor_saved'] = False
+    elif outcome['result'] == 'saved' and outcome['player']:
+        summary['message'] = f"Doctor saved {outcome['player'].get('name')} last night"
+        summary['saved'] = {'id': outcome['player'].get('id'), 'name': outcome['player'].get('name')}
+        if saved_by:
+            summary['saved_by'] = {'id': saved_by.get('id'), 'name': saved_by.get('name')}
+        summary['doctor_saved'] = True
+    else:
+        summary['message'] = 'No one died last night'
+        summary['doctor_saved'] = False
+
+    # allow public chat again; send updated room state and players list before summary
     await sio.emit('room_state', {'players': _rooms.get(room, []), 'host_id': meta.get('host_id'), 'eliminated': meta.get('eliminated', {})}, room=room)
+    await sio.emit('night_summary', summary, room=room)
+    # give players time to read the summary
+    await asyncio.sleep(5)
 
-    # start voting phase automatically after a short discussion window (optional)
-    # For simplicity, immediately start voting — clients can delay locally if desired
+    # start the voting phase (120s default)
     await _start_voting_phase(room)
-    # Check win conditions after night resolution (example simple checks)
-    await _check_win_conditions(room)
 
 
 async def _start_voting_phase(room: str, duration: int = 120):

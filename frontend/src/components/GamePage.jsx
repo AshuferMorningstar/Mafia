@@ -19,7 +19,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
   const [myRole, setMyRole] = useState(role || null);
   const [roleDescription, setRoleDescription] = useState('');
   const [notificationText, setNotificationText] = useState(null);
-  const persistentPhases = ['night_start', 'killer', 'doctor', 'day', 'voting'];
+  const persistentPhases = ['night_start', 'killer', 'doctor', 'day', 'day_start', 'voting'];
   const [phase, setPhase] = useState(null);
   const [phaseDuration, setPhaseDuration] = useState(null);
   const [phaseRemaining, setPhaseRemaining] = useState(null);
@@ -360,6 +360,27 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
           if (d.result === 'killed') setEliminatedIds((s) => Array.from(new Set([...s, pid])));
         }
       } catch (e) {}
+    });
+
+    // New: night_summary is emitted after day_start to give a concise summary of the previous night
+    socket.off('night_summary');
+    socket.on('night_summary', (d) => {
+      if (!d) return;
+      try {
+        // Server provides a friendly message plus structured fields (killed/saved/saved_by)
+        const msg = d.message || (d.killed ? `${d.killed.name} was killed last night` : (d.saved ? `Doctor saved ${d.saved.name} last night` : 'No one died last night'));
+        setNotificationText(msg);
+        // update eliminated list based on payload
+        if (d.killed && d.killed.id) {
+          setEliminatedIds((s) => Array.from(new Set([...s, d.killed.id])));
+        }
+        if (d.saved && d.saved.id) {
+          setEliminatedIds((s) => s.filter((x) => x !== d.saved.id));
+        }
+      } catch (e) {
+        // fallback to raw display
+        setNotificationText(JSON.stringify(d));
+      }
     });
 
     socket.off('detective_result');
