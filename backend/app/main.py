@@ -165,7 +165,17 @@ async def disconnect(sid):
             remaining = _rooms.get(room, [])
             meta['host_id'] = remaining[0].get('id') if remaining else None
         try:
-            await sio.emit('room_state', {'players': _rooms.get(room, []), 'host_id': meta.get('host_id'), 'eliminated': meta.get('eliminated', {})}, room=room)
+            # include alive role member lists for client-facing convenience
+            players = _rooms.get(room, [])
+            assigned = meta.get('assigned_roles', {})
+            eliminated = meta.get('eliminated', {}) or {}
+            alive = [p for p in players if not eliminated.get(p.get('id'))]
+            alive_role_members = {}
+            for p in alive:
+                r = assigned.get(p.get('id')) or 'Civilian'
+                alive_role_members.setdefault(r, []).append({'id': p.get('id'), 'name': p.get('name')})
+            role_counts = {k: len(v) for k, v in alive_role_members.items()}
+            await sio.emit('room_state', {'players': players, 'host_id': meta.get('host_id'), 'eliminated': meta.get('eliminated', {}), 'alive_role_members': alive_role_members, 'role_counts': role_counts}, room=room)
         except Exception:
             pass
         return True
@@ -302,7 +312,23 @@ async def handle_join(sid, data):
     # broadcast to room
     await sio.emit('player_joined', {'player': player}, room=room)
     # also emit a room_state update (players + host)
-    await sio.emit('room_state', {'players': _rooms.get(room, []), 'host_id': meta.get('host_id'), 'eliminated': meta.get('eliminated', {})}, room=room)
+    # include alive role members in room_state updates
+    try:
+        players = _rooms.get(room, [])
+        assigned = meta.get('assigned_roles', {})
+        eliminated = meta.get('eliminated', {}) or {}
+        alive = [p for p in players if not eliminated.get(p.get('id'))]
+        alive_role_members = {}
+        for p in alive:
+            r = assigned.get(p.get('id')) or 'Civilian'
+            alive_role_members.setdefault(r, []).append({'id': p.get('id'), 'name': p.get('name')})
+        role_counts = {k: len(v) for k, v in alive_role_members.items()}
+        await sio.emit('room_state', {'players': players, 'host_id': meta.get('host_id'), 'eliminated': meta.get('eliminated', {}), 'alive_role_members': alive_role_members, 'role_counts': role_counts}, room=room)
+    except Exception:
+        try:
+            await sio.emit('room_state', {'players': _rooms.get(room, []), 'host_id': meta.get('host_id'), 'eliminated': meta.get('eliminated', {})}, room=room)
+        except Exception:
+            pass
 
 
 @sio.on('time_sync')
@@ -331,7 +357,19 @@ async def handle_leave(sid, data):
         if meta.get('host_id') == player.get('id'):
             remaining = _rooms.get(room, [])
             meta['host_id'] = remaining[0].get('id') if remaining else None
-            await sio.emit('room_state', {'players': _rooms.get(room, []), 'host_id': meta.get('host_id')}, room=room)
+            try:
+                players = _rooms.get(room, [])
+                assigned = meta.get('assigned_roles', {})
+                eliminated = meta.get('eliminated', {}) or {}
+                alive = [p for p in players if not eliminated.get(p.get('id'))]
+                alive_role_members = {}
+                for p in alive:
+                    r = assigned.get(p.get('id')) or 'Civilian'
+                    alive_role_members.setdefault(r, []).append({'id': p.get('id'), 'name': p.get('name')})
+                role_counts = {k: len(v) for k, v in alive_role_members.items()}
+                await sio.emit('room_state', {'players': players, 'host_id': meta.get('host_id'), 'eliminated': meta.get('eliminated', {}), 'alive_role_members': alive_role_members, 'role_counts': role_counts}, room=room)
+            except Exception:
+                await sio.emit('room_state', {'players': _rooms.get(room, []), 'host_id': meta.get('host_id')}, room=room)
 
 
 @sio.on('send_message')
@@ -366,6 +404,38 @@ async def handle_message(sid, data):
         except Exception:
             pass
         return
+
+    # handle scoped/team messages separately: killers/doctors private rooms
+    try:
+        sender_id = message.get('from', {}).get('id')
+    except Exception:
+        sender_id = None
+
+    if scope in ('killers', 'doctors'):
+        # only allow players with the matching assigned role to send scoped messages
+        assigned = meta.get('assigned_roles', {})
+        required_role = 'Killer' if scope == 'killers' else 'Doctor'
+        if not sender_id or assigned.get(sender_id) != required_role:
+            try:
+                await sio.emit('chat_blocked', {'message': 'You are not authorized to send to that team chat.'}, room=sid)
+            except Exception:
+                pass
+            return
+
+        # determine private room name
+        private_room = meta.get('killer_room') if scope == 'killers' else meta.get('doctor_room')
+        if private_room:
+            # persist private message under the private room namespace (optional)
+            try:
+                save_message(private_room, message)
+            except Exception:
+                pass
+            try:
+                await sio.emit('new_message', {'message': message}, room=private_room)
+            except Exception:
+                pass
+            return
+        # if no private room available, fallthrough to public
 
     # Daytime or public messages: save and broadcast publicly
     try:

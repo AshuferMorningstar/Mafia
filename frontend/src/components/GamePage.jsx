@@ -36,6 +36,10 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
   const [hostId, setHostId] = useState(null);
   const [localSettings, setLocalSettings] = useState({ killCount: 1, doctorCount: 0, detectiveCount: 0 });
   const inputRef = useRef(null);
+  const [privateScope, setPrivateScope] = useState('public'); // 'public' | 'killers' | 'doctors'
+  const [aliveRoleMembers, setAliveRoleMembers] = useState({});
+  const [privatePanel, setPrivatePanel] = useState(null); // null | 'killers' | 'doctors'
+  const panelInputRef = useRef(null);
 
   const shareUrl = (() => {
     try { return `${window.location.origin}${window.location.pathname}?room=${roomCode}`; } catch (e) { return roomCode; }
@@ -203,6 +207,14 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
         const elim = d?.eliminated || {};
         const ids = Object.keys(elim).filter((k) => elim[k]);
         setEliminatedIds(ids);
+        // store alive role members mapping if provided by server
+        if (d?.alive_role_members) {
+          try {
+            // e.g. { Killer: [{id,name}], Doctor: [...] }
+            // keep it on state as a simple mapping
+            setAliveRoleMembers(d.alive_role_members);
+          } catch (e) {}
+        }
       } catch (e) {}
     });
 
@@ -293,6 +305,11 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
       setAmReady(false);
       // mark the client as in-game so lobby controls are hidden
       setInGame(true);
+      // update local settings counts from server-provided settings if present
+      try {
+        const s = d?.settings || {};
+        setLocalSettings({ killCount: s.killCount || 1, doctorCount: s.doctorCount || 0, detectiveCount: s.detectiveCount || 0 });
+      } catch (e) {}
     });
 
     socket.off('phase');
@@ -738,6 +755,33 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
         {activeTab === 'chat' && (
           // show chat input always for the chat tab; sending is enabled only when allowed
           <div className="chat-input-row chat-input-bottom">
+            {/* Private team chat toggles: only show to Killers/Doctors and only if more than one of that role exists per current room settings or assigned roles */}
+            <div style={{display:'flex', gap:8, alignItems:'center', marginRight:8}}>
+              {myRole === 'Killer' && ( (aliveRoleMembers?.Killer && aliveRoleMembers.Killer.length > 1) || (localSettings.killCount || 0) > 1 ) && (
+                <button
+                  title="Shadows (open private panel)"
+                  onClick={() => { setPrivatePanel('killers'); setPrivateScope('killers'); setTimeout(() => panelInputRef.current?.focus(), 50); }}
+                  style={{padding: '8px 10px', borderRadius:8, background: privatePanel === 'killers' ? '#e8c96a' : '#2b1f12', color: privatePanel === 'killers' ? '#2b1f12' : '#f6d27a', border: 'none', cursor: 'pointer'}}
+                >
+                  Shadows
+                </button>
+              )}
+              {myRole === 'Doctor' && ( (aliveRoleMembers?.Doctor && aliveRoleMembers.Doctor.length > 1) || (localSettings.doctorCount || 0) > 1 ) && (
+                <button
+                  title="Danctuary (open private panel)"
+                  onClick={() => { setPrivatePanel('doctors'); setPrivateScope('doctors'); setTimeout(() => panelInputRef.current?.focus(), 50); }}
+                  style={{padding: '8px 10px', borderRadius:8, background: privatePanel === 'doctors' ? '#e8c96a' : '#2b1f12', color: privatePanel === 'doctors' ? '#2b1f12' : '#f6d27a', border: 'none', cursor: 'pointer'}}
+                >
+                  Danctuary
+                </button>
+              )}
+            </div>
+            {/* show active scope badge */}
+            {privateScope && privateScope !== 'public' && (
+              <div style={{marginRight:12, padding: '6px 10px', background:'#2b1f12', color:'#f6d27a', borderRadius:8, fontWeight:800}}>
+                {privateScope === 'killers' ? 'Shadows (private)' : privateScope === 'doctors' ? 'Danctuary (private)' : 'Private'}
+              </div>
+            )}
             {/* disable chat input if player is eliminated */}
             <input
               id="game-chat-input"
@@ -760,9 +804,8 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
                   const me = meRef.current;
                   const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
                   const message = { id: uniqueId, from: { id: me.id, name: me.name }, text, ts: Date.now() };
-                  let scope = 'public';
-                  if (phase === 'killer' && myRole === 'Killer') scope = 'killers';
-                  if (phase === 'doctor' && myRole === 'Doctor') scope = 'doctors';
+                  // use currently selected privateScope (falls back to public)
+                  const scope = privateScope || 'public';
                   socket.emit('send_message', { roomId: roomCode, message: { ...message, scope }, scope });
                   if (inputRef.current) inputRef.current.value = '';
                 }
@@ -778,9 +821,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
                 const me = meRef.current;
                 const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
                 const message = { id: uniqueId, from: { id: me.id, name: me.name }, text, ts: Date.now() };
-                let scope = 'public';
-                if (phase === 'killer' && myRole === 'Killer') scope = 'killers';
-                if (phase === 'doctor' && myRole === 'Doctor') scope = 'doctors';
+                const scope = privateScope || 'public';
                 socket.emit('send_message', { roomId: roomCode, message: { ...message, scope }, scope });
                 if (inputRef.current) inputRef.current.value = '';
               }}
@@ -798,10 +839,76 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
         {/* Action UI removed per request: players act through other controls/flows handled by server */}
       </main>
 
-      <div className="external-actions">
-        <button className="lobby-action start">VOTE</button>
+  <div className="external-actions">
+        {/* Show team private chat buttons conditionally. Civilians only see Leave. */}
+        {myRole === 'Killer' && ((aliveRoleMembers?.Killer && aliveRoleMembers.Killer.length > 1) || (localSettings.killCount || 0) > 1) && (
+          <button className="lobby-action start" onClick={() => { setPrivatePanel('killers'); setPrivateScope('killers'); setTimeout(() => panelInputRef.current?.focus(), 50); }}>
+            Shadows
+          </button>
+        )}
+        {myRole === 'Doctor' && ((aliveRoleMembers?.Doctor && aliveRoleMembers.Doctor.length > 1) || (localSettings.doctorCount || 0) > 1) && (
+          <button className="lobby-action start" onClick={() => { setPrivatePanel('doctors'); setPrivateScope('doctors'); setTimeout(() => panelInputRef.current?.focus(), 50); }}>
+            Danctuary
+          </button>
+        )}
         <button className="lobby-action close" onClick={onExit}>LEAVE THE ROOM</button>
       </div>
+      {/* Private toast panel for team chat */}
+      {privatePanel && (privatePanel === 'killers' || privatePanel === 'doctors') && (
+        <div style={{position:'fixed', left:'50%', top:'50%', transform:'translate(-50%, -50%)', width:680, maxWidth:'96vw', height:480, maxHeight:'88vh', background:'var(--panel)', border:`1px solid rgba(255,75,75,0.12)`, borderRadius:14, boxShadow:'0 12px 40px rgba(0,0,0,0.5)', color:'var(--text)', zIndex:1200}}>
+          <div style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 16px', borderBottom:'1px solid rgba(255,255,255,0.04)'}}>
+            <div style={{fontWeight:900, fontSize:18}}>{privatePanel === 'killers' ? 'Shadows' : 'Sanctuary'}</div>
+            <div style={{display:'flex', gap:8, alignItems:'center'}}>
+              <div style={{color:'var(--muted)', fontSize:12}}>{(aliveRoleMembers?.[privatePanel === 'killers' ? 'Killer' : 'Doctor'] || []).length} online</div>
+              <button onClick={() => setPrivatePanel(null)} style={{background:'transparent', border:'none', color:'#f6d27a', fontWeight:800, cursor:'pointer'}}>Close</button>
+            </div>
+          </div>
+          <div style={{display:'flex', flexDirection:'column', gap:10, padding:12, height:'calc(100% - 92px)', boxSizing:'border-box', overflow:'hidden'}}>
+            <div style={{flex:1, overflowY:'auto', paddingRight:8}}>
+              {(messages.filter(m => m.scope === (privatePanel === 'killers' ? 'killers' : 'doctors')) || []).map((m, i) => (
+                <div key={`pmsg-${i}-${m.id || m.ts}`} style={{marginBottom:10}}>
+                  <div style={{fontSize:13, fontWeight:700, color:'var(--muted)'}}>{m.from?.name || 'Anon'}</div>
+                  <div style={{fontSize:15, marginTop:4}}>{m.text}</div>
+                </div>
+              ))}
+              {((messages.filter(m => m.scope === (privatePanel === 'killers' ? 'killers' : 'doctors')) || []).length === 0) && (
+                <div style={{color:'var(--muted)'}}>No messages yet</div>
+              )}
+            </div>
+            <div style={{display:'flex', gap:8, alignItems:'center'}}>
+              <input ref={panelInputRef} placeholder={`Message ${privatePanel === 'killers' ? 'Shadows' : 'Sanctuary'}`} style={{flex:1, padding:'12px', borderRadius:10, border:'1px solid rgba(255,255,255,0.06)', background:'var(--bg)', color:'var(--text)'}} onKeyDown={(e)=>{
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  const nightPhases = ['killer','doctor','night_start','pre_night'];
+                  const isNightPhase = phase && nightPhases.includes(phase);
+                  if (isNightPhase) return;
+                  const text = panelInputRef.current?.value;
+                  if (!text) return;
+                  const me = meRef.current;
+                  const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
+                  const scope = privatePanel === 'killers' ? 'killers' : 'doctors';
+                  const message = { id: uniqueId, from: { id: me.id, name: me.name }, text, ts: Date.now(), scope };
+                  socket.emit('send_message', { roomId: roomCode, message: message, scope });
+                  panelInputRef.current.value = '';
+                }
+            }} />
+              <button onClick={() => {
+                const nightPhases = ['killer','doctor','night_start','pre_night'];
+                const isNightPhase = phase && nightPhases.includes(phase);
+                if (isNightPhase) return;
+                const text = panelInputRef.current?.value;
+                if (!text) return;
+                const me = meRef.current;
+                const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
+                const scope = privatePanel === 'killers' ? 'killers' : 'doctors';
+                const message = { id: uniqueId, from: { id: me.id, name: me.name }, text, ts: Date.now(), scope };
+                socket.emit('send_message', { roomId: roomCode, message: message, scope });
+                panelInputRef.current.value = '';
+              }} style={{padding:'10px 14px', borderRadius:10, background:'var(--accent)', border:'none', cursor:'pointer', fontWeight:800, color:'var(--text)'}}>Send</button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* persistent win banner */}
       {winBanner && (
         <div className={`win-banner ${winBanner.winner === 'Killers' ? 'killers' : 'civilians'}`} role="status" aria-live="polite">
