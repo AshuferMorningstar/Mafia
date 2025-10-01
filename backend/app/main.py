@@ -543,10 +543,11 @@ async def handle_player_ready(sid, data):
                 settings = {'killCount': 1, 'doctorCount': 0, 'detectiveCount': 0}
             assigned = _assign_roles_to_players(players, settings)
             # store assigned roles in meta and mark in-game
+            # reset eliminated mapping so previous game's deaths do not persist
             meta['assigned_roles'] = {p.get('id'): p.get('role') for p in assigned}
             meta['in_game'] = True
             meta['phase'] = 'pre_night'
-            meta['eliminated'] = meta.get('eliminated', {})
+            meta['eliminated'] = {}
 
             # prepare private rooms for killers and doctors
             killer_room = f"{room}__killers"
@@ -1146,7 +1147,20 @@ async def _check_win_conditions(room: str):
     if killers == 0:
         await sio.emit('game_over', {'winner': 'Civilians'}, room=room)
         meta['phase'] = 'ended'
+        # clear in-game flag and any ready marks so lobby must re-ready to start again
         meta['in_game'] = False
+        try:
+            meta['ready'] = {}
+        except Exception:
+            meta['ready'] = {}
+        # schedule a reset after 10s so clients can display final message, then the room is cleared
+        async def _delayed_reset_civ():
+            try:
+                await asyncio.sleep(10)
+                await _reset_room(room)
+            except Exception:
+                return
+        asyncio.create_task(_delayed_reset_civ())
         return
 
     if killers >= others:
@@ -1157,7 +1171,52 @@ async def _check_win_conditions(room: str):
         killer_list = [{'id': p.get('id'), 'name': p.get('name')} for p in alive_killers]
         await sio.emit('game_over', {'winner': 'Killers', 'killers': killer_list}, room=room)
         meta['phase'] = 'ended'
+        # clear in-game flag and any ready marks so lobby must re-ready to start again
         meta['in_game'] = False
+        try:
+            meta['ready'] = {}
+        except Exception:
+            meta['ready'] = {}
+        async def _delayed_reset_k():
+            try:
+                await asyncio.sleep(10)
+                await _reset_room(room)
+            except Exception:
+                return
+        asyncio.create_task(_delayed_reset_k())
+        return
+
+
+async def _reset_room(room: str):
+    """Reset room metadata and delete room messages so clients see a fresh lobby with the same room code."""
+    try:
+        meta = _room_meta.setdefault(room, {})
+        meta['in_game'] = False
+        meta['phase'] = None
+        meta['assigned_roles'] = {}
+        meta['eliminated'] = {}
+        meta['ready'] = {}
+        meta['actions'] = {}
+        meta['votes'] = {}
+        meta.pop('killer_room', None)
+        meta.pop('doctor_room', None)
+        # clear messages from sqlite for this room and its private rooms
+        try:
+            conn = get_db_conn()
+            cur = conn.cursor()
+            cur.execute('DELETE FROM messages WHERE room = ?', (room,))
+            cur.execute('DELETE FROM messages WHERE room = ?', (f"{room}__killers",))
+            cur.execute('DELETE FROM messages WHERE room = ?', (f"{room}__doctors",))
+            conn.commit()
+            conn.close()
+        except Exception:
+            pass
+        # notify clients to reset their UI
+        try:
+            await sio.emit('room_reset', {'room': room}, room=room)
+        except Exception:
+            pass
+    except Exception:
         return
 
 

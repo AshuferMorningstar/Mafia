@@ -324,6 +324,27 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
       try { setDetectiveUsed(false); } catch (e) {}
     });
 
+    socket.off('room_reset');
+    socket.on('room_reset', (d) => {
+      // server requested a full room reset: clear client-side state to look like a fresh lobby
+      try {
+        setMessages([]);
+        setEliminatedIds([]);
+        setMyRole(null);
+        setRoleDescription('');
+        setAliveRoleMembers({});
+        setAmReady(false);
+        setReadyState([]);
+        setCurrentVotes({});
+        setKillerActed(false);
+        setDoctorActed(false);
+        setDetectiveUsed(false);
+        setInGame(false);
+        // refresh authoritative player list
+        fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/rooms/${roomCode}/players`).then(r => r.json()).then(d => setPlayerList(d.players || [])).catch(() => {});
+      } catch (e) {}
+    });
+
     // prestart is emitted once with start_ts and duration so clients compute synchronized countdown
     socket.off('prestart');
     socket.on('prestart', (d) => {
