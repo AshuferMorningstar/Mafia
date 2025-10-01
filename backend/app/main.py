@@ -698,6 +698,14 @@ async def handle_killer_action(sid, data):
         meta['night_kill'] = {'target': None, 'by': pid, 'skipped': True}
         killer_actions[pid] = None
     else:
+        # Prevent killers from targeting other killers
+        assigned = meta.get('assigned_roles', {})
+        if target_id and assigned.get(target_id) == 'Killer':
+            try:
+                await sio.emit('action_blocked', {'message': 'Killers cannot target other Killers.'}, room=sid)
+            except Exception:
+                pass
+            return
         meta['night_kill'] = {'target': target_id, 'by': pid}
         killer_actions[pid] = target_id
     try:
@@ -925,6 +933,13 @@ async def _resolve_night_and_start_day(room: str):
     # small pause for clients to show day transition
     await asyncio.sleep(5)
 
+    # Immediately check win conditions before showing summary/voting. This prevents starting the voting
+    # phase when the killers have already met the win condition (e.g., killers > others or only 1 non-killer left).
+    await _check_win_conditions(room)
+    if not meta.get('in_game'):
+        # Game ended as a result of win condition; don't proceed to night summary or voting
+        return
+
     # send a concise night summary that clients can display for 5s
     summary = {}
     if outcome['result'] == 'killed' and outcome['player']:
@@ -1004,6 +1019,15 @@ async def handle_cast_vote(sid, data):
             pass
         return
     # record the vote in both the canonical votes mapping and the per-round actions tracker
+    # Prevent killers from voting for other killers
+    assigned = meta.get('assigned_roles', {})
+    if target is not None and assigned.get(vid) == 'Killer' and assigned.get(target) == 'Killer':
+        try:
+            await sio.emit('action_blocked', {'message': 'Killers cannot vote for other Killers.'}, room=sid)
+        except Exception:
+            pass
+        return
+
     prev = meta.setdefault('votes', {}).get(vid)
     meta.setdefault('votes', {})[vid] = target
     actions = meta.setdefault('actions', {})
@@ -1114,17 +1138,19 @@ async def _check_win_conditions(room: str):
             alive_roles['Civilian'] += 1
 
     killers = alive_roles.get('Killer', 0)
-    civilians = alive_roles.get('Civilian', 0) + alive_roles.get('Doctor', 0) + alive_roles.get('Detective', 0)
+    others = alive_roles.get('Civilian', 0) + alive_roles.get('Doctor', 0) + alive_roles.get('Detective', 0)
 
+    # Win conditions:
+    # - If no killers remain -> Civilians win
+    # - If killers >= others -> Killers win
     if killers == 0:
-        # civilians win
         await sio.emit('game_over', {'winner': 'Civilians'}, room=room)
         meta['phase'] = 'ended'
         meta['in_game'] = False
         return
-    if killers >= civilians:
+
+    if killers >= others:
         # killers win - include alive killer names so clients can announce them
-        # find alive killer players
         all_players = _rooms.get(room, [])
         assigned = meta.get('assigned_roles', {})
         alive_killers = [p for p in all_players if not meta.get('eliminated', {}).get(p.get('id')) and assigned.get(p.get('id')) == 'Killer']

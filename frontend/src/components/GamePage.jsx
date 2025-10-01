@@ -734,14 +734,21 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
                       {isReady && !inGame && <span style={{marginLeft:8, color:'#9be', fontWeight:700}}>READY</span>}
                     </div>
                     <div style={{display:'flex', gap:8}}>
-                      {/* Killer action (knife) - visible only to Killers and when actionable */}
-                      {myRole === 'Killer' && canKill && (
-                        <button title="Kill" onClick={() => {
-                          socket.emit('killer_action', { roomId: roomCode, player: meRef.current, targetId: id });
-                          setKillerActed(true);
-                          setNotificationText(`You targeted ${name}`);
-                        }}>🔪</button>
-                      )}
+                            {/* Killer action (knife) - visible only to Killers and when actionable. Hide if target is a Killer teammate. */}
+                            {myRole === 'Killer' && canKill && (() => {
+                              try {
+                                const killers = aliveRoleMembers?.Killer || [];
+                                const targetIsKiller = killers.some((k) => k.id === id);
+                                if (targetIsKiller) return null;
+                              } catch (e) {}
+                              return (
+                                <button title="Kill" onClick={() => {
+                                  socket.emit('killer_action', { roomId: roomCode, player: meRef.current, targetId: id });
+                                  setKillerActed(true);
+                                  setNotificationText(`You targeted ${name}`);
+                                }}>🔪</button>
+                              );
+                            })()}
                       {/* Doctor action (bandage) - visible only to Doctors and when actionable */}
                       {myRole === 'Doctor' && canSave && (
                         <button title="Save" onClick={() => {
