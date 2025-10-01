@@ -729,47 +729,39 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
                       {isReady && !inGame && <span style={{marginLeft:8, color:'#9be', fontWeight:700}}>READY</span>}
                     </div>
                     <div style={{display:'flex', gap:8}}>
-                      {/* Killer action (knife) - visible only to Killers */}
-                      {myRole === 'Killer' && (
-                        <>
-                          <button title="Kill" disabled={!canKill} onClick={() => {
-                            if (!canKill) return;
-                            socket.emit('killer_action', { roomId: roomCode, player: meRef.current, targetId: id });
-                            setKillerActed(true);
-                            setNotificationText(`You targeted ${name}`);
-                          }}>🔪</button>
-                          {/* compact skip removed - use shared Skip/Abstain control */}
-                        </>
+                      {/* Killer action (knife) - visible only to Killers and when actionable */}
+                      {myRole === 'Killer' && canKill && (
+                        <button title="Kill" onClick={() => {
+                          socket.emit('killer_action', { roomId: roomCode, player: meRef.current, targetId: id });
+                          setKillerActed(true);
+                          setNotificationText(`You targeted ${name}`);
+                        }}>🔪</button>
                       )}
-                      {/* Doctor action (bandage) - visible only to Doctors */}
-                      {myRole === 'Doctor' && (
-                        <>
-                          <button title="Save" disabled={!canSave} onClick={() => {
-                            if (!canSave) return;
-                            socket.emit('doctor_action', { roomId: roomCode, player: meRef.current, targetId: id });
-                            setDoctorActed(true);
-                            setNotificationText(`You chose to save ${name}`);
-                          }}>🩹</button>
-                          {/* compact skip removed - use shared Skip/Abstain control */}
-                        </>
+                      {/* Doctor action (bandage) - visible only to Doctors and when actionable */}
+                      {myRole === 'Doctor' && canSave && (
+                        <button title="Save" onClick={() => {
+                          socket.emit('doctor_action', { roomId: roomCode, player: meRef.current, targetId: id });
+                          setDoctorActed(true);
+                          setNotificationText(`You chose to save ${name}`);
+                        }}>🩹</button>
                       )}
-                      {/* Detective action (magnifier) - visible only to Detectives */}
-                      {myRole === 'Detective' && (
-                        <button title="Investigate" disabled={!canInvestigate} onClick={() => {
-                          if (!canInvestigate) return;
+                      {/* Detective action (magnifier) - visible only to Detectives and when actionable */}
+                      {myRole === 'Detective' && canInvestigate && (
+                        <button title="Investigate" onClick={() => {
                           socket.emit('detective_action', { roomId: roomCode, player: meRef.current, targetId: id });
                           setDetectiveUsed(true);
                           setNotificationText(`You investigated ${name}`);
                         }}>🔍</button>
                       )}
-                      {/* Sus/vote button - visible during day to everyone alive */}
-                      <button title="Sus / Vote" disabled={!canSusVote} onClick={() => {
-                        if (!canSusVote) return;
-                        // locally track current vote and emit cast_vote
-                        setCurrentVotes((s) => ({ ...s, [meRef.current.id]: id }));
-                        socket.emit('cast_vote', { roomId: roomCode, player: meRef.current, targetId: id });
-                        setNotificationText(`You voted for ${name}`);
-                      }}>🤨</button>
+                      {/* Sus/vote button - visible during day/voting to everyone alive */}
+                      {canSusVote && (
+                        <button title="Sus / Vote" onClick={() => {
+                          // locally track current vote and emit cast_vote
+                          setCurrentVotes((s) => ({ ...s, [meRef.current.id]: id }));
+                          socket.emit('cast_vote', { roomId: roomCode, player: meRef.current, targetId: id });
+                          setNotificationText(`You voted for ${name}`);
+                        }}>🤨</button>
+                      )}
                       {/* per-row Skip/Abstain removed in favor of the shared control above */}
                     </div>
                   </li>
@@ -804,7 +796,10 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
           const killerCanSkip = myRole === 'Killer' && killerOnlyPhase && !killerActed && !amEliminated;
           const doctorCanSkip = myRole === 'Doctor' && doctorOnlyPhase && !doctorActed && !amEliminated;
           const canAbstain = votingPhase && !amEliminated;
+          const visible = killerCanSkip || doctorCanSkip || canAbstain;
           const disabled = amEliminated || !(killerCanSkip || doctorCanSkip || canAbstain);
+
+          if (!visible) return null;
 
           const handleSharedSkip = () => {
             if (disabled) return;
