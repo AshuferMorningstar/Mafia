@@ -770,36 +770,40 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
                         setNotificationText(`You voted for ${name}`);
                       }}>🤨</button>
                       {/* Skip/Abstain for voting per-row (also permitted) */}
-                      <button title="Skip / Abstain" onClick={() => {
-                        // If we're in a night phase and the player has a role action available, use role skip
-                        const nightPhases = ['killer', 'doctor', 'night_start', 'pre_night'];
-                        const isNight = phase && nightPhases.includes(phase);
+                      {(() => {
                         const pid = meRef.current?.id;
-                        if (isNight) {
-                          // Killer skip
-                          if (myRole === 'Killer' && !killerActed && !eliminatedIds.includes(pid)) {
+                        const amEliminated = eliminatedIds.includes(pid);
+                        const killerOnlyPhase = phase === 'killer';
+                        const doctorOnlyPhase = phase === 'doctor';
+                        const votingPhase = phase === 'day' || phase === 'voting';
+                        const killerCanSkip = myRole === 'Killer' && killerOnlyPhase && !killerActed && !amEliminated;
+                        const doctorCanSkip = myRole === 'Doctor' && doctorOnlyPhase && !doctorActed && !amEliminated;
+                        const canAbstain = votingPhase && !amEliminated;
+                        const disabled = amEliminated || !(killerCanSkip || doctorCanSkip || canAbstain);
+
+                        const handleSkipClick = () => {
+                          if (disabled) return;
+                          if (killerCanSkip) {
                             socket.emit('killer_action', { roomId: roomCode, player: meRef.current, skip: true });
                             setKillerActed(true);
                             setNotificationText('You skipped your kill');
                             return;
                           }
-                          // Doctor skip
-                          if (myRole === 'Doctor' && !doctorActed && !eliminatedIds.includes(pid)) {
+                          if (doctorCanSkip) {
                             socket.emit('doctor_action', { roomId: roomCode, player: meRef.current, skip: true });
                             setDoctorActed(true);
                             setNotificationText('You skipped your save');
                             return;
                           }
-                        }
-                        // Default: abstain from voting
-                        if (!(phase === 'day' || phase === 'voting')) {
-                          // not a voting phase and no role skip available — no-op
-                          return;
-                        }
-                        setCurrentVotes((s) => ({ ...s, [pid]: null }));
-                        socket.emit('cast_vote', { roomId: roomCode, player: meRef.current, targetId: null });
-                        setNotificationText('You abstained from voting');
-                      }}>⏭</button>
+                          if (canAbstain) {
+                            setCurrentVotes((s) => ({ ...s, [pid]: null }));
+                            socket.emit('cast_vote', { roomId: roomCode, player: meRef.current, targetId: null });
+                            setNotificationText('You abstained from voting');
+                          }
+                        };
+
+                        return <button title="Skip / Abstain" disabled={disabled} onClick={handleSkipClick}>⏭</button>;
+                      })()}
                     </div>
                   </li>
                 );
