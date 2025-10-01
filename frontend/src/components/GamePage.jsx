@@ -89,7 +89,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
 
   const [showSettingsPopup, setShowSettingsPopup] = useState(false);
   const [showSettingsToast, setShowSettingsToast] = useState(false);
-  const [winBanner, setWinBanner] = useState(null); // { winner: 'Killers'|'Civilians', message }
+  const [winShowing, setWinShowing] = useState(false);
 
   useEffect(() => {
     // Connect socket and fetch initial state
@@ -260,15 +260,41 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
     socket.on('game_over', (d) => {
       if (!d) return;
       let text = `Game over! Winner: ${d.winner}`;
-      // If killers won and server provided killer names, append them
       if (d.winner === 'Killers' && Array.isArray(d.killers) && d.killers.length > 0) {
         const names = d.killers.map((k) => k.name).filter(Boolean).join(', ');
         if (names) text = `Killers win! Survivors eliminated by: ${names}`;
       }
+      // Show final message in notification area for at least 10s (no phase timer displayed)
       setNotificationText(text);
+      setWinShowing(true);
       setPhase('ended');
-      // show persistent win banner until dismissed
-      setWinBanner({ winner: d.winner, message: text });
+      // After 10s, clear the notification and allow players to ready again for a fresh game
+      setTimeout(async () => {
+        setNotificationText(null);
+        setWinShowing(false);
+        // Reset client-side lobby state so Ready flow appears exactly like the initial lobby
+        try {
+          setInGame(false);
+          setAmReady(false);
+          setEliminatedIds([]);
+          setMyRole(null);
+          setRoleDescription('');
+          setAliveRoleMembers({});
+          setReadyState([]);
+          setCurrentVotes({});
+          setKillerActed(false);
+          setDoctorActed(false);
+          setDetectiveUsed(false);
+          // fetch authoritative player list from server to ensure display matches server ordering
+          try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/rooms/${roomCode}/players`);
+            const jd = await res.json();
+            setPlayerList(jd.players || []);
+          } catch (e) {
+            // ignore fetch errors
+          }
+        } catch (e) {}
+      }, 10000);
     });
 
     const handlePlayerLeft = (data) => {
@@ -567,6 +593,8 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
     if (prestartCountdown != null) return;
     // do not auto-clear if we are in a persistent phase
     if (phase && persistentPhases.includes(phase)) return;
+    // do not auto-clear if we are explicitly showing a win message
+    if (winShowing) return;
     const t = setTimeout(() => setNotificationText(null), 8000);
     return () => clearTimeout(t);
   }, [notificationText, prestartCountdown, phase]);
@@ -1003,12 +1031,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
         }} tabIndex={-1} style={{position:'fixed', left:0, top:0, right:0, bottom:0, background:'rgba(0,0,0,0.45)', zIndex:1190}} onClick={() => setPrivatePanel(null)} />
       )}
       {/* persistent win banner */}
-      {winBanner && (
-        <div className={`win-banner ${winBanner.winner === 'Killers' ? 'killers' : 'civilians'}`} role="status" aria-live="polite">
-          <span>{winBanner.message}</span>
-          <button className="dismiss" onClick={() => setWinBanner(null)}>Dismiss</button>
-        </div>
-      )}
+      {/* win banner removed per user request */}
     </div>
   );
 }
