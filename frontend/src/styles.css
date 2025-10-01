@@ -525,14 +525,9 @@ html, body, #root {
 .sliding-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,0.04)}
 .sliding-title{margin:0;font-family:'Cinzel Decorative',serif;font-size:1.2rem}
 .sliding-close{background:transparent;border:none;color:var(--text);font-size:1.05rem;padding:6px 8px;border-radius:8px;cursor:pointer}
-.sliding-body{padding:16px;overflow:auto}
+.sliding-body{padding:16px; overflow:auto; flex:1 1 0; min-height:0}
 
-/* Ensure native select dropdowns inside the sliding panel render directly below the control
-  instead of being clipped or positioned unexpectedly by ancestor overflow/transform.
-  Making the panel fixed (above) and allowing the body to be visible helps browsers
-  place the UA popup in the expected position. We also raise the z-index on the select
-  control itself as a soft fallback. */
-.sliding-body{overflow: visible}
+/* sliding-body overflow behavior set earlier */
 .sliding-panel .panel-select{position:relative;z-index:2200;-webkit-appearance:menulist-button;appearance:menulist-button}
 
 /* Hide native scrollbars but keep scrolling functional */
