@@ -689,7 +689,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
                   </div>
                 ) : null}
 
-                {/* Global abstain button removed: per-row skip/abstain buttons remain beside each player */}
+                {/* Shared Skip/Abstain control moved to the players card bottom-right (see player list render) */}
 
                 {/* role modal removed — roles are displayed inline in the role panel above */}
 
@@ -708,6 +708,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
 
         <section className="lobby-card-body" style={activeTab === 'chat' ? {display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0} : {}}>
           {activeTab === 'players' ? (
+            <div>
             <ul className="lobby-players-list">
               {playerList.map((p, i) => {
                 const name = p && typeof p === 'object' ? p.name : p;
@@ -769,46 +770,13 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
                         socket.emit('cast_vote', { roomId: roomCode, player: meRef.current, targetId: id });
                         setNotificationText(`You voted for ${name}`);
                       }}>🤨</button>
-                      {/* Skip/Abstain for voting per-row (also permitted) */}
-                      {(() => {
-                        const pid = meRef.current?.id;
-                        const amEliminated = eliminatedIds.includes(pid);
-                        const killerOnlyPhase = phase === 'killer';
-                        const doctorOnlyPhase = phase === 'doctor';
-                        const votingPhase = phase === 'day' || phase === 'voting';
-                        const killerCanSkip = myRole === 'Killer' && killerOnlyPhase && !killerActed && !amEliminated;
-                        const doctorCanSkip = myRole === 'Doctor' && doctorOnlyPhase && !doctorActed && !amEliminated;
-                        const canAbstain = votingPhase && !amEliminated;
-                        const disabled = amEliminated || !(killerCanSkip || doctorCanSkip || canAbstain);
-
-                        const handleSkipClick = () => {
-                          if (disabled) return;
-                          if (killerCanSkip) {
-                            socket.emit('killer_action', { roomId: roomCode, player: meRef.current, skip: true });
-                            setKillerActed(true);
-                            setNotificationText('You skipped your kill');
-                            return;
-                          }
-                          if (doctorCanSkip) {
-                            socket.emit('doctor_action', { roomId: roomCode, player: meRef.current, skip: true });
-                            setDoctorActed(true);
-                            setNotificationText('You skipped your save');
-                            return;
-                          }
-                          if (canAbstain) {
-                            setCurrentVotes((s) => ({ ...s, [pid]: null }));
-                            socket.emit('cast_vote', { roomId: roomCode, player: meRef.current, targetId: null });
-                            setNotificationText('You abstained from voting');
-                          }
-                        };
-
-                        return <button title="Skip / Abstain" disabled={disabled} onClick={handleSkipClick}>⏭</button>;
-                      })()}
+                      {/* per-row Skip/Abstain removed in favor of the shared control above */}
                     </div>
                   </li>
                 );
               })}
             </ul>
+            </div>
           ) : (
             <>
               <div style={{flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', minHeight: 0}}>
@@ -825,6 +793,48 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
             </>
           )}
         </section>
+
+        {/* Shared Skip/Abstain button anchored to the bottom-right of the lobby card */}
+        {activeTab === 'players' && (() => {
+          const pid = meRef.current?.id;
+          const amEliminated = eliminatedIds.includes(pid);
+          const killerOnlyPhase = phase === 'killer';
+          const doctorOnlyPhase = phase === 'doctor';
+          const votingPhase = phase === 'day' || phase === 'voting';
+          const killerCanSkip = myRole === 'Killer' && killerOnlyPhase && !killerActed && !amEliminated;
+          const doctorCanSkip = myRole === 'Doctor' && doctorOnlyPhase && !doctorActed && !amEliminated;
+          const canAbstain = votingPhase && !amEliminated;
+          const disabled = amEliminated || !(killerCanSkip || doctorCanSkip || canAbstain);
+
+          const handleSharedSkip = () => {
+            if (disabled) return;
+            if (killerCanSkip) {
+              socket.emit('killer_action', { roomId: roomCode, player: meRef.current, skip: true });
+              setKillerActed(true);
+              setNotificationText('You skipped your kill');
+              return;
+            }
+            if (doctorCanSkip) {
+              socket.emit('doctor_action', { roomId: roomCode, player: meRef.current, skip: true });
+              setDoctorActed(true);
+              setNotificationText('You skipped your save');
+              return;
+            }
+            if (canAbstain) {
+              setCurrentVotes((s) => ({ ...s, [pid]: null }));
+              socket.emit('cast_vote', { roomId: roomCode, player: meRef.current, targetId: null });
+              setNotificationText('You abstained from voting');
+            }
+          };
+
+          return (
+            <div style={{position:'absolute', right:16, bottom:16}}>
+              <button title="Skip / Abstain" disabled={disabled} onClick={handleSharedSkip} style={{padding:'8px 12px', borderRadius:12, background:'#f6d27a', border:'none', fontWeight:800, cursor:'pointer'}}>
+                ⏭
+              </button>
+            </div>
+          );
+        })()}
 
         {activeTab === 'chat' && (
           // show chat input always for the chat tab; sending is enabled only when allowed
