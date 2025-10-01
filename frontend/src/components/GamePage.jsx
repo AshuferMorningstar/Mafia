@@ -294,6 +294,8 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
     socket.on('game_started', (data) => {
       const publicPlayers = data?.players || [];
       setPlayerList(publicPlayers);
+      // reset detective usage flag at game start for this client
+      try { setDetectiveUsed(false); } catch (e) {}
     });
 
     // prestart is emitted once with start_ts and duration so clients compute synchronized countdown
@@ -339,6 +341,8 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
         const s = d?.settings || {};
         setLocalSettings({ killCount: s.killCount || 1, doctorCount: s.doctorCount || 0, detectiveCount: s.detectiveCount || 0 });
       } catch (e) {}
+      // reset detective usage when roles are assigned (new game / new role assignment)
+      try { setDetectiveUsed(false); } catch (e) {}
     });
 
     socket.off('phase');
@@ -445,9 +449,10 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
     socket.off('detective_result');
     socket.on('detective_result', (d) => {
       if (!d) return;
+      // Show the detective result privately to this client (server emits only to the requesting detective)
       const text = d.is_killer ? `Investigation: target is a KILLER` : `Investigation: target is NOT a killer (role: ${d.role})`;
       setNotificationText(text);
-      setMessages((prev) => [...prev, { id: `detective-${Date.now()}`, from: { name: 'Detective' }, text }]);
+      // do NOT append to public chat history; this should remain private
     });
 
     socket.off('vote_result');
