@@ -34,7 +34,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
   const [notifKey, setNotifKey] = useState(0);
   const [noVotesCountdown, setNoVotesCountdown] = useState(null);
   const [hostId, setHostId] = useState(null);
-  const [localSettings, setLocalSettings] = useState({ killCount: 1, doctorCount: 0, detectiveCount: 0 });
+  const [localSettings, setLocalSettings] = useState({ killCount: 1, doctorCount: 1, detectiveCount: 0, killerDuration: 120, doctorDuration: 120, votingDuration: 120 });
   const inputRef = useRef(null);
   // privateScope removed: main chat always sends to public; private panels use scoped sends
   const [aliveRoleMembers, setAliveRoleMembers] = useState({});
@@ -250,7 +250,14 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
     socket.off('settings_updated');
     socket.on('settings_updated', (d) => {
       const s = d?.settings || {};
-      if (s) setLocalSettings({ killCount: s.killCount || 1, doctorCount: s.doctorCount || 0, detectiveCount: s.detectiveCount || 0 });
+      if (s) setLocalSettings({
+        killCount: s.killCount || 1,
+        doctorCount: s.doctorCount || 0,
+        detectiveCount: s.detectiveCount || 0,
+        killerDuration: s.killerDuration || 120,
+        doctorDuration: s.doctorDuration || 120,
+        votingDuration: s.votingDuration || 120,
+      });
       // briefly show a toast confirming settings were applied
       setShowSettingsToast(true);
       setTimeout(() => setShowSettingsToast(false), 2500);
@@ -662,16 +669,54 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
 
         {/* Settings popup card (host only) */}
         {showSettingsPopup && hostId && meRef.current && hostId === meRef.current.id && (
-          <div className="settings-popover">
-            <div className="card">
-              <div style={{fontWeight:800, marginBottom:8}}>Room Settings</div>
-              <div className="row">
-                <label htmlFor="killCount">Killers <input id="killCount" name="killCount" type="number" min={1} value={localSettings.killCount} onChange={(e) => setLocalSettings((s) => ({...s, killCount: Number(e.target.value)}))} /></label>
-                <label htmlFor="doctorCount">Doctors <input id="doctorCount" name="doctorCount" type="number" min={0} value={localSettings.doctorCount} onChange={(e) => setLocalSettings((s) => ({...s, doctorCount: Number(e.target.value)}))} /></label>
-              </div>
-              <div className="row">
-                <label htmlFor="detectiveCount">Detectives <input id="detectiveCount" name="detectiveCount" type="number" min={0} value={localSettings.detectiveCount} onChange={(e) => setLocalSettings((s) => ({...s, detectiveCount: Number(e.target.value)}))} /></label>
-              </div>
+          <div className="settings-popover" onClick={() => setShowSettingsPopup(false)}>
+            <div className="card panel-body" onClick={(e) => e.stopPropagation()}>
+              <div className="panel-heading">Room Settings</div>
+                <div className="row">
+                  <div className="panel-section" style={{flex:1}}>
+                    <label className="panel-label" htmlFor="killCount">Killers</label>
+                    <input id="killCount" name="killCount" type="number" min={1} value={localSettings.killCount} onChange={(e) => setLocalSettings((s) => ({...s, killCount: Number(e.target.value)}))} className="panel-select" />
+                  </div>
+                  <div className="panel-section" style={{flex:1}}>
+                    <label className="panel-label" htmlFor="doctorCount">Doctors</label>
+                    <input id="doctorCount" name="doctorCount" type="number" min={0} value={localSettings.doctorCount} onChange={(e) => setLocalSettings((s) => ({...s, doctorCount: Number(e.target.value)}))} className="panel-select" />
+                  </div>
+                </div>
+
+                <div className="row">
+                  <div className="panel-section" style={{flex:1}}>
+                    <label className="panel-label" htmlFor="detectiveCount">Detectives</label>
+                    <input id="detectiveCount" name="detectiveCount" type="number" min={0} value={localSettings.detectiveCount} onChange={(e) => setLocalSettings((s) => ({...s, detectiveCount: Number(e.target.value)}))} className="panel-select" />
+                  </div>
+                </div>
+
+                <hr />
+                <div className="panel-note" style={{marginTop:8, fontWeight:700}}>Phase Durations (seconds) — cannot decrease below defaults</div>
+                <div className="row" style={{marginTop:8}}>
+                  <div className="panel-section" style={{flex:1}}>
+                    <label className="panel-label" htmlFor="killerDuration">Killer</label>
+                    <input id="killerDuration" name="killerDuration" type="number" min={120} max={300} value={localSettings.killerDuration} onChange={(e) => {
+                      let v = Number(e.target.value) || 0; if (v > 300) v = 300; setLocalSettings((s) => ({...s, killerDuration: v}));
+                    }} className="panel-select" />
+                    <div className="panel-note" style={{marginTop:6, fontSize:12}}>Max 300s</div>
+                  </div>
+                  <div className="panel-section" style={{flex:1}}>
+                    <label className="panel-label" htmlFor="doctorDuration">Doctor</label>
+                    <input id="doctorDuration" name="doctorDuration" type="number" min={120} max={300} value={localSettings.doctorDuration} onChange={(e) => {
+                      let v = Number(e.target.value) || 0; if (v > 300) v = 300; setLocalSettings((s) => ({...s, doctorDuration: v}));
+                    }} className="panel-select" />
+                    <div className="panel-note" style={{marginTop:6, fontSize:12}}>Max 300s</div>
+                  </div>
+                </div>
+                <div className="row">
+                  <div className="panel-section" style={{flex:1}}>
+                    <label className="panel-label" htmlFor="votingDuration">Voting</label>
+                    <input id="votingDuration" name="votingDuration" type="number" min={120} max={300} value={localSettings.votingDuration} onChange={(e) => {
+                      let v = Number(e.target.value) || 0; if (v > 300) v = 300; setLocalSettings((s) => ({...s, votingDuration: v}));
+                    }} className="panel-select" />
+                    <div className="panel-note" style={{marginTop:6, fontSize:12}}>Max 300s</div>
+                  </div>
+                </div>
               <div className="actions">
                 <button className="btn cancel" onClick={() => setShowSettingsPopup(false)}>Cancel</button>
                 <button className="btn apply" onClick={() => { socket.emit('set_settings', { roomId: roomCode, settings: localSettings }); setShowSettingsPopup(false); }}>Apply</button>

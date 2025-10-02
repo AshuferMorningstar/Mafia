@@ -493,8 +493,40 @@ async def handle_set_settings(sid, data):
     except Exception:
         pass
     # persist settings in room meta (will be used on game start)
-    meta['settings'] = settings
-    await sio.emit('settings_updated', {'settings': settings}, room=room)
+    # enforce duration rules: default minimal durations (seconds)
+    DEFAULTS = {'killerDuration': 120, 'doctorDuration': 120, 'votingDuration': 120}
+    incoming = dict(settings)
+    # normalize numeric counts and durations safely
+    try:
+        incoming = {
+            'killCount': int(incoming.get('killCount', 1)),
+            'doctorCount': int(incoming.get('doctorCount', 0)),
+            'detectiveCount': int(incoming.get('detectiveCount', 0)),
+            'killerDuration': int(incoming.get('killerDuration', DEFAULTS['killerDuration'])),
+            'doctorDuration': int(incoming.get('doctorDuration', DEFAULTS['doctorDuration'])),
+            'votingDuration': int(incoming.get('votingDuration', DEFAULTS['votingDuration'])),
+        }
+    except Exception:
+        # fall back to sensible defaults on parse error
+        incoming = {'killCount': 1, 'doctorCount': 1, 'detectiveCount': 0, 'killerDuration': DEFAULTS['killerDuration'], 'doctorDuration': DEFAULTS['doctorDuration'], 'votingDuration': DEFAULTS['votingDuration']}
+
+    # If existing settings are present, do not allow decreasing durations below current set or default
+    existing = meta.get('settings', {}) or {}
+    MAX_DURATION = 300
+    for key in ('killerDuration', 'doctorDuration', 'votingDuration'):
+        min_allowed = max(DEFAULTS[key], int(existing.get(key, DEFAULTS[key])))
+        # enforce minimum
+        if incoming.get(key, DEFAULTS[key]) < min_allowed:
+            incoming[key] = min_allowed
+        # enforce maximum cap so timers can't be set above MAX_DURATION
+        if incoming.get(key, DEFAULTS[key]) > MAX_DURATION:
+            incoming[key] = MAX_DURATION
+
+    meta['settings'] = incoming
+    try:
+        await sio.emit('settings_updated', {'settings': meta['settings']}, room=room)
+    except Exception:
+        pass
 
 
 @sio.on('player_ready')
@@ -536,8 +568,11 @@ async def handle_player_ready(sid, data):
             try:
                 settings = {
                     'killCount': int(settings.get('killCount', 1)),
-                    'doctorCount': int(settings.get('doctorCount', 0)),
+                    'doctorCount': int(settings.get('doctorCount', 1)),
                     'detectiveCount': int(settings.get('detectiveCount', 0)),
+                    'killerDuration': int(settings.get('killerDuration', 120)),
+                    'doctorDuration': int(settings.get('doctorDuration', 120)),
+                    'votingDuration': int(settings.get('votingDuration', 120)),
                 }
             except Exception:
                 settings = {'killCount': 1, 'doctorCount': 0, 'detectiveCount': 0}
@@ -624,7 +659,11 @@ async def _start_night_sequence(room: str):
     await sio.emit('phase', {'phase': 'night_start', 'message': "Night time - Everyone close your eyes", 'duration': 5, 'start_ts': start_ts}, room=room)
     # wait 5s then start killer phase
     await asyncio.sleep(5)
-    await _start_killer_phase(room)
+    # use configured duration if present
+    meta = _room_meta.setdefault(room, {})
+    settings = meta.get('settings', {}) or {}
+    killer_dur = int(settings.get('killerDuration', 120))
+    await _start_killer_phase(room, duration=killer_dur)
 
 
 async def _start_killer_phase(room: str, duration: int = 120):
@@ -726,7 +765,9 @@ async def handle_killer_action(sid, data):
         # directly resolve night (doctor phase skipped)
         await _resolve_night_and_start_day(room)
     else:
-        await _start_doctor_phase(room)
+        settings = meta.get('settings', {}) or {}
+        doctor_dur = int(settings.get('doctorDuration', 120))
+        await _start_doctor_phase(room, duration=doctor_dur)
 
 
 async def _start_doctor_phase(room: str, duration: int = 120):
@@ -976,7 +1017,9 @@ async def _resolve_night_and_start_day(room: str):
     await asyncio.sleep(5)
 
     # start the voting phase (120s default)
-    await _start_voting_phase(room)
+    settings = meta.get('settings', {}) or {}
+    voting_dur = int(settings.get('votingDuration', 120))
+    await _start_voting_phase(room, duration=voting_dur)
 
 
 async def _start_voting_phase(room: str, duration: int = 120):
