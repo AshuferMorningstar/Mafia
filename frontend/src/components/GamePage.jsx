@@ -171,34 +171,52 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
     const handleNewMessage = (data) => {
       const message = data?.message || data;
       if (!message) return;
-      setMessages((prev) => {
-        const exists = prev.some((m) => {
-          if (!m) return false;
-          if (m.id && message.id) return m.id === message.id;
-          if (m.ts && message.ts && m.text && message.text) return m.ts === message.ts && m.text === message.text;
-          return false;
-        });
-        if (exists) return prev;
-        // if this is a System message, surface it in the notification area and do NOT append it to the chat messages
-        if (message?.from?.name === 'System' && message?.text) {
-          if (!persistentPhases.includes(phase) && prestartCountdown == null) {
-            setNotificationText(message.text);
-          }
-          return prev; // skip adding to chat history
-        }
-        return [...prev, message];
-      });
-      // if this is a scoped private message and the private panel for that scope is open, append to privateMessages
+      // Only append public-scope messages to the main chat history.
+      const scope = message?.scope || 'public';
       try {
-        const scope = message?.scope;
         if (scope === 'killers' || scope === 'doctors') {
+          // scoped/team message: route to privateMessages only (do not add to public chat)
           if (privatePanel === scope) {
-            setPrivateMessages((pm) => [...pm, message]);
+            setPrivateMessages((pm) => {
+              try {
+                const exists = (pm || []).some((m) => {
+                  if (!m) return false;
+                  if (m.id && message.id) return m.id === message.id;
+                  if (m.ts && message.ts && m.text && message.text) return m.ts === message.ts && m.text === message.text;
+                  return false;
+                });
+                if (exists) return pm;
+              } catch (e) {}
+              return [...(pm || []), message];
+            });
             // auto-scroll private panel when receiving new team messages
             try { setTimeout(() => { if (privateScrollRef.current) privateScrollRef.current.scrollTop = privateScrollRef.current.scrollHeight; }, 60); } catch (e) {}
           }
+          return;
         }
-      } catch (e) {}
+
+        // public or system messages: append to public chat
+        setMessages((prev) => {
+          const exists = prev.some((m) => {
+            if (!m) return false;
+            if (m.id && message.id) return m.id === message.id;
+            if (m.ts && message.ts && m.text && message.text) return m.ts === message.ts && m.text === message.text;
+            return false;
+          });
+          if (exists) return prev;
+          // if this is a System message, surface it in the notification area and do NOT append it to the chat messages
+          if (message?.from?.name === 'System' && message?.text) {
+            if (!persistentPhases.includes(phase) && prestartCountdown == null) {
+              setNotificationText(message.text);
+            }
+            return prev; // skip adding to chat history
+          }
+          return [...prev, message];
+        });
+      } catch (e) {
+        // swallow errors here to avoid breaking socket handler
+        console.error('handleNewMessage error', e);
+      }
     };
 
     const handlePlayerJoined = (data) => {
