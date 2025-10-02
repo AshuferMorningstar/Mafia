@@ -41,6 +41,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
   const [privatePanel, setPrivatePanel] = useState(null); // null | 'killers' | 'doctors'
   const panelInputRef = useRef(null);
   const [privateMessages, setPrivateMessages] = useState([]);
+  const privateScrollRef = useRef(null);
   const modalRef = useRef(null);
   const closeBtnRef = useRef(null);
   const prevFocusRef = useRef(null);
@@ -157,6 +158,16 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
     socket.off('player_joined');
     socket.off('player_left');
 
+    socket.off('chat_blocked');
+    socket.on('chat_blocked', (d) => {
+      try {
+        const msg = d?.message || (d && d.message) || 'Message blocked';
+        setNotificationText(msg);
+        // clear after short delay
+        setTimeout(() => setNotificationText(null), 2400);
+      } catch (e) {}
+    });
+
     const handleNewMessage = (data) => {
       const message = data?.message || data;
       if (!message) return;
@@ -183,6 +194,8 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
         if (scope === 'killers' || scope === 'doctors') {
           if (privatePanel === scope) {
             setPrivateMessages((pm) => [...pm, message]);
+            // auto-scroll private panel when receiving new team messages
+            try { setTimeout(() => { if (privateScrollRef.current) privateScrollRef.current.scrollTop = privateScrollRef.current.scrollHeight; }, 60); } catch (e) {}
           }
         }
       } catch (e) {}
@@ -566,9 +579,6 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
   // Helper to send private (scoped) messages. Performs optimistic append and ensures socket is connected.
   const sendPrivate = async (text) => {
     if (!text) return;
-    const nightPhases = ['killer','doctor','night_start','pre_night'];
-    const isNightPhase = phase && nightPhases.includes(phase);
-    if (isNightPhase) return;
     const me = meRef.current;
     const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
     const scope = privatePanel === 'killers' ? 'killers' : 'doctors';
@@ -1055,7 +1065,7 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
             </div>
           </div>
           <div style={{display:'flex', flexDirection:'column', gap:10, padding:12, height:'calc(100% - 92px)', boxSizing:'border-box', overflow:'hidden'}}>
-            <div style={{flex:1, overflowY:'auto', paddingRight:8}}>
+            <div ref={privateScrollRef} style={{flex:1, overflowY:'auto', paddingRight:8}}>
               {(privateMessages.length ? privateMessages : messages.filter(m => m.scope === (privatePanel === 'killers' ? 'killers' : 'doctors'))) .map((m, i) => (
                 <div key={`pmsg-${i}-${m.id || m.ts}`} style={{marginBottom:10}}>
                   <div style={{fontSize:13, fontWeight:700, color:'var(--muted)'}}>{(m.from && m.from.name) || m.sender_name || 'Anon'}</div>
@@ -1074,6 +1084,8 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
                   if (!text) return;
                   await sendPrivate(text);
                   if (panelInputRef.current) panelInputRef.current.value = '';
+                  // scroll after optimistic append
+                  try { setTimeout(() => { if (privateScrollRef.current) privateScrollRef.current.scrollTop = privateScrollRef.current.scrollHeight; }, 80); } catch (e) {}
                 }
             }} />
               <button onClick={async () => {
