@@ -398,12 +398,13 @@ async def handle_message(sid, data):
     # Night restrictions: all chat (public and private) is closed during explicit night phases
     night_phases = ('night_start', 'killer', 'doctor', 'pre_night')
     if phase and phase in night_phases:
-        # simply ignore all chat sends during night phases
-        try:
-            await sio.emit('chat_blocked', {'message': 'Chat is closed during the night phase.'}, room=sid)
-        except Exception:
-            pass
-        return
+        # Only block public chat during explicit night phases; allow scoped team chat (killers/doctors)
+        if scope == 'public':
+            try:
+                await sio.emit('chat_blocked', {'message': 'Public chat is closed during the night phase.'}, room=sid)
+            except Exception:
+                pass
+            return
 
     # handle scoped/team messages separately: killers/doctors private rooms
     try:
@@ -421,21 +422,21 @@ async def handle_message(sid, data):
             except Exception:
                 pass
             return
-
-        # determine private room name
+        # determine canonical private room name (persist there even if meta hasn't stored it yet)
+        canonical_private = f"{room}__killers" if scope == 'killers' else f"{room}__doctors"
+        # persist private message under the canonical private room namespace so it can be fetched later
+        try:
+            save_message(canonical_private, message)
+        except Exception:
+            pass
+        # emit to the socket.io private room if server has registered it, else emit to the canonical room
         private_room = meta.get('killer_room') if scope == 'killers' else meta.get('doctor_room')
-        if private_room:
-            # persist private message under the private room namespace (optional)
-            try:
-                save_message(private_room, message)
-            except Exception:
-                pass
-            try:
-                await sio.emit('new_message', {'message': message}, room=private_room)
-            except Exception:
-                pass
-            return
-        # if no private room available, fallthrough to public
+        emit_room = private_room or canonical_private
+        try:
+            await sio.emit('new_message', {'message': message}, room=emit_room)
+        except Exception:
+            pass
+        return
 
     # Daytime or public messages: save and broadcast publicly
     try:
