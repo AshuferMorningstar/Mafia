@@ -906,9 +906,13 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
           ) : (
             <>
               <div style={{flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', minHeight: 0}}>
-                  <div className="lobby-chat-placeholder">Chat will appear here</div>
+                  {(() => {
+                    const publicMessages = (messages || []).filter((m) => !m.scope || m.scope === 'public');
+                    if (!publicMessages || publicMessages.length === 0) return <div className="lobby-chat-placeholder">Chat will appear here</div>;
+                    return null;
+                  })()}
                     <div className="chat-messages" id="chat-messages">
-                    {messages.map((m, idx) => (
+                    {(messages || []).filter((m) => !m.scope || m.scope === 'public').map((m, idx) => (
                       <div key={`${m.id || idx}-${idx}`} style={{padding: '6px 0'}}>
                         <strong style={{color: '#f3d7b0'}}>{m.from?.name || m.sender_name || 'Anon'}:</strong>
                         <span style={{marginLeft: 8}}>{m.text}</span>
@@ -1084,13 +1088,13 @@ export default function GamePage({ roomCode, players = [], role = null, onExit =
           </div>
           <div style={{display:'flex', flexDirection:'column', gap:10, padding:12, height:'calc(100% - 92px)', boxSizing:'border-box', overflow:'hidden'}}>
             <div ref={privateScrollRef} style={{flex:1, overflowY:'auto', paddingRight:8}}>
-              {(privateMessages.length ? privateMessages : messages.filter(m => m.scope === (privatePanel === 'killers' ? 'killers' : 'doctors'))) .map((m, i) => (
+              {((privateMessages && privateMessages.length) ? privateMessages : (messages.filter(m => m.scope === (privatePanel === 'killers' ? 'killers' : 'doctors')) || [])).map((m, i) => (
                 <div key={`pmsg-${i}-${m.id || m.ts}`} style={{marginBottom:10}}>
                   <div style={{fontSize:13, fontWeight:700, color:'var(--muted)'}}>{(m.from && m.from.name) || m.sender_name || 'Anon'}</div>
                   <div style={{fontSize:15, marginTop:4}}>{m.text}</div>
                 </div>
               ))}
-              {((messages.filter(m => m.scope === (privatePanel === 'killers' ? 'killers' : 'doctors')) || []).length === 0) && (
+              {(((privateMessages && privateMessages.length) ? privateMessages : (messages.filter(m => m.scope === (privatePanel === 'killers' ? 'killers' : 'doctors')) || [])) .length === 0) && (
                 <div style={{color:'var(--muted)'}}>No messages yet</div>
               )}
             </div>
