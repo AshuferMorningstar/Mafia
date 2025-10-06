@@ -254,7 +254,7 @@ async def disconnect(sid):
 
     try:
         # best-effort leave any rooms this sid may still be in
-        await sio.leave_room(sid, room or '')
+        sio.leave_room(sid, room or '')
     except Exception:
         pass
 
@@ -308,7 +308,7 @@ async def handle_join(sid, data):
     if not meta.get('host_id'):
         meta['host_id'] = player.get('id')
     await sio.save_session(sid, {'room': room, 'player': player})
-    await sio.enter_room(sid, room)
+    sio.enter_room(sid, room)
     # broadcast to room
     await sio.emit('player_joined', {'player': player}, room=room)
     # also emit a room_state update (players + host)
@@ -350,7 +350,7 @@ async def handle_leave(sid, data):
     if room and player:
         lst = _rooms.get(room, [])
         _rooms[room] = [p for p in lst if p.get('id') != player.get('id')]
-        await sio.leave_room(sid, room)
+        sio.leave_room(sid, room)
         await sio.emit('player_left', {'player': player}, room=room)
         # update room metadata: if host left, promote next player (if any)
         meta = _room_meta.get(room, {})
@@ -609,12 +609,12 @@ async def handle_player_ready(sid, data):
                         # server-side: place each active socket into private rooms so server can emit to them
                         if p.get('role') == 'Killer':
                             try:
-                                await sio.enter_room(psid, killer_room)
+                                sio.enter_room(psid, killer_room)
                             except Exception:
                                 pass
                         if p.get('role') == 'Doctor':
                             try:
-                                await sio.enter_room(psid, doctor_room)
+                                sio.enter_room(psid, doctor_room)
                             except Exception:
                                 pass
                     except Exception as e:
@@ -689,8 +689,11 @@ async def _start_killer_phase(room: str, duration: int = 120):
 
     async def killer_timer():
         try:
+            print(f"[killer_timer] Starting timer for room {room}, duration {duration}s")
             await asyncio.sleep(duration)
+            print(f"[killer_timer] Timer expired for room {room}, proceeding to doctor phase")
         except asyncio.CancelledError:
+            print(f"[killer_timer] Timer cancelled for room {room}")
             return
         # timer expired, proceed to doctor phase (or skip doctor if none alive)
         await _start_doctor_phase(room)
@@ -757,15 +760,19 @@ async def handle_killer_action(sid, data):
     if task and not task.done():
         task.cancel()
     # after a killer action, if there are no alive doctors, skip doctor phase
+    print(f"[killer_action] Checking for alive doctors in room {room}")
     players = _rooms.get(room, [])
     assigned = meta.get('assigned_roles', {})
     alive_players = [p for p in players if not meta.get('eliminated', {}).get(p.get('id'))]
     # count alive doctors
     alive_doctors = sum(1 for p in alive_players if assigned.get(p.get('id')) == 'Doctor')
+    print(f"[killer_action] Found {alive_doctors} alive doctors")
     if alive_doctors <= 0:
+        print(f"[killer_action] No doctors, skipping to resolve_night")
         # directly resolve night (doctor phase skipped)
         await _resolve_night_and_start_day(room)
     else:
+        print(f"[killer_action] Starting doctor phase")
         settings = meta.get('settings', {}) or {}
         doctor_dur = int(settings.get('doctorDuration', 120))
         await _start_doctor_phase(room, duration=doctor_dur)
@@ -784,11 +791,14 @@ async def _start_doctor_phase(room: str, duration: int = 120):
 
     async def doctor_timer():
         try:
+            print(f"[doctor_timer] Starting timer for room {room}, duration {duration}s")
             await asyncio.sleep(duration)
+            print(f"[doctor_timer] Timer expired for room {room}, scheduling resolve_night task")
         except asyncio.CancelledError:
+            print(f"[doctor_timer] Timer cancelled for room {room}")
             return
-        # timer expired, resolve night
-        await _resolve_night_and_start_day(room)
+        # timer expired, schedule resolve night as a separate task
+        asyncio.create_task(_resolve_night_and_start_day(room))
 
     task = asyncio.create_task(doctor_timer())
     meta['doctor_task'] = task
@@ -894,9 +904,11 @@ async def handle_detective_action(sid, data):
 
 
 async def _resolve_night_and_start_day(room: str):
+    print(f"[resolve_night] *** FUNCTION START *** for room {room}")
     meta = _room_meta.setdefault(room, {})
     killed = meta.get('night_kill')
     saved = meta.get('doctor_save')
+    print(f"[resolve_night] killed={killed}, saved={saved}")
     killed_player = None
     saved_player = None
     saved_by = None
@@ -973,16 +985,18 @@ async def _resolve_night_and_start_day(room: str):
     start_ts = int(time.time() * 1000)
     meta['phase'] = 'day_start'
     await sio.emit('phase', {'phase': 'day_start', 'message': 'Day time - Open your eyes', 'duration': 5, 'start_ts': start_ts}, room=room)
+    print(f"[resolve_night] Day start phase emitted, sleeping for 5s...")
     # small pause for clients to show day transition
-    await asyncio.sleep(5)
+    try:
+        await asyncio.sleep(5)
+        print(f"[resolve_night] Day start sleep completed, preparing night summary...")
+    except asyncio.CancelledError:
+        print(f"[resolve_night] TASK CANCELLED during sleep, but continuing anyway...")
+    except Exception as e:
+        print(f"[resolve_night] ERROR during sleep: {e}")
+        print(f"[resolve_night] Continuing despite error...")
 
-    # Immediately check win conditions before showing summary/voting. This prevents starting the voting
-    # phase when the killers have already met the win condition (e.g., killers > others or only 1 non-killer left).
-    await _check_win_conditions(room)
-    if not meta.get('in_game'):
-        # Game ended as a result of win condition; don't proceed to night summary or voting
-        return
-
+    # Always show night summary first so players know what happened during the night
     # send a concise night summary that clients can display for 5s
     summary = {}
     if outcome['result'] == 'killed' and outcome['player']:
@@ -1013,14 +1027,39 @@ async def _resolve_night_and_start_day(room: str):
         await sio.emit('room_state', {'players': players_now, 'host_id': meta.get('host_id'), 'eliminated': meta.get('eliminated', {}), 'alive_role_members': alive_role_members, 'role_counts': role_counts}, room=room)
     except Exception:
         await sio.emit('room_state', {'players': _rooms.get(room, []), 'host_id': meta.get('host_id'), 'eliminated': meta.get('eliminated', {})}, room=room)
+    print(f"[resolve_night] About to emit night_summary: {summary}")
     await sio.emit('night_summary', summary, room=room)
+    print(f"[resolve_night] Night summary emitted, sleeping for 5s...")
     # give players time to read the summary
-    await asyncio.sleep(5)
+    try:
+        await asyncio.sleep(5)
+        print(f"[resolve_night] Night summary sleep completed")
+    except asyncio.CancelledError:
+        print(f"[resolve_night] TASK CANCELLED during night summary sleep, but continuing...")
+    except Exception as e:
+        print(f"[resolve_night] ERROR during night summary sleep: {e}")
+        print(f"[resolve_night] Continuing despite error...")
 
-    # start the voting phase (120s default)
-    settings = meta.get('settings', {}) or {}
-    voting_dur = int(settings.get('votingDuration', 120))
-    await _start_voting_phase(room, duration=voting_dur)
+    # Now check win conditions AFTER players have seen what happened at night
+    try:
+        print(f"[resolve_night] Night summary displayed, now checking win conditions...")
+        await _check_win_conditions(room)
+        print(f"[resolve_night] Win conditions checked, in_game={meta.get('in_game')}")
+        if not meta.get('in_game'):
+            # Game ended as a result of win condition; don't proceed to voting
+            print(f"[resolve_night] Game ended after night summary, returning")
+            return
+
+        # If no win condition met, start the voting phase (120s default)
+        print(f"[resolve_night] No win condition met, starting voting phase...")
+        settings = meta.get('settings', {}) or {}
+        voting_dur = int(settings.get('votingDuration', 120))
+        await _start_voting_phase(room, duration=voting_dur)
+        print(f"[resolve_night] *** FUNCTION END *** voting phase started")
+    except Exception as e:
+        print(f"[resolve_night] CRITICAL ERROR in win condition check or voting start: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 async def _start_voting_phase(room: str, duration: int = 120):
@@ -1167,6 +1206,7 @@ async def _resolve_votes(room: str):
 
 async def _check_win_conditions(room: str):
     """Simple win checks: if all killers are dead -> Civilians win; if killers >= civilians -> Killers win."""
+    print(f"[check_win_conditions] *** FUNCTION START *** for room {room}")
     meta = _room_meta.setdefault(room, {})
     # consider only non-eliminated players as alive
     all_players = _rooms.get(room, [])
@@ -1185,6 +1225,8 @@ async def _check_win_conditions(room: str):
     killers = alive_roles.get('Killer', 0)
     others = alive_roles.get('Civilian', 0) + alive_roles.get('Doctor', 0) + alive_roles.get('Detective', 0)
 
+    print(f"[check_win_conditions] killers={killers}, others={others}, alive_roles={alive_roles}")
+    
     # Win conditions:
     # - If no killers remain -> Civilians win
     # - If killers >= others -> Killers win
@@ -1208,11 +1250,13 @@ async def _check_win_conditions(room: str):
         return
 
     if killers >= others:
+        print(f"[check_win_conditions] Killers win condition triggered: {killers} >= {others}")
         # killers win - include alive killer names so clients can announce them
         all_players = _rooms.get(room, [])
         assigned = meta.get('assigned_roles', {})
         alive_killers = [p for p in all_players if not meta.get('eliminated', {}).get(p.get('id')) and assigned.get(p.get('id')) == 'Killer']
         killer_list = [{'id': p.get('id'), 'name': p.get('name')} for p in alive_killers]
+        print(f"[check_win_conditions] Emitting game_over: Killers win, killer_list={killer_list}")
         await sio.emit('game_over', {'winner': 'Killers', 'killers': killer_list}, room=room)
         meta['phase'] = 'ended'
         # clear in-game flag and any ready marks so lobby must re-ready to start again
