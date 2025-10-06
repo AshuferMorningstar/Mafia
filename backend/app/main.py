@@ -1137,15 +1137,30 @@ async def handle_cast_vote(sid, data):
 async def _resolve_votes(room: str):
     meta = _room_meta.setdefault(room, {})
     votes = meta.get('votes', {})
-    # count votes
+    
+    # count actual votes and skips
     counts = {}
+    skip_count = 0
+    total_votes = 0
+    
     for v in votes.values():
-        # ignore abstain/skip (None) votes
+        total_votes += 1
         if v is None:
-            continue
-        counts[v] = counts.get(v, 0) + 1
+            # count skips/abstains
+            skip_count += 1
+        else:
+            # count actual votes
+            counts[v] = counts.get(v, 0) + 1
+    
+    # calculate total actual votes cast (not skips)
+    actual_vote_count = total_votes - skip_count
+    
+    print(f"[resolve_votes] Room {room}: {actual_vote_count} actual votes, {skip_count} skips, {total_votes} total")
+    print(f"[resolve_votes] Vote counts: {counts}")
+    
+    # If no actual votes were cast, no elimination
     if not counts:
-        await sio.emit('vote_result', {'result': 'no_votes'}, room=room)
+        await sio.emit('vote_result', {'result': 'no_votes', 'skip_count': skip_count}, room=room)
         meta['phase'] = 'post_vote'
         # schedule next night if game still active (no elimination occurred)
         await _check_win_conditions(room)
@@ -1157,14 +1172,23 @@ async def _resolve_votes(room: str):
                     await _start_night_sequence(room)
             asyncio.create_task(_next_night_no_votes())
         return
-    # find max
+    
+    # find max votes for any single player
     max_votes = max(counts.values())
     top = [pid for pid, c in counts.items() if c == max_votes]
+    
+    # IMPORTANT: Check if skips outnumber or equal the highest vote count
+    # If skips >= max_votes, then no elimination should occur
     eliminated = None
-    if len(top) == 1:
+    if skip_count >= max_votes:
+        print(f"[resolve_votes] Skips ({skip_count}) >= max votes ({max_votes}), no elimination")
+        eliminated = None
+    elif len(top) == 1:
         eliminated = top[0]
+        print(f"[resolve_votes] Clear winner: {eliminated} with {max_votes} votes")
     else:
-        # tie: no elimination (could randomize if desired)
+        # tie between multiple players: no elimination 
+        print(f"[resolve_votes] Tie between {len(top)} players with {max_votes} votes each, no elimination")
         eliminated = None
 
     if eliminated:
@@ -1175,7 +1199,13 @@ async def _resolve_votes(room: str):
             role = meta.get('assigned_roles', {}).get(eliminated)
             # mark eliminated (do not remove from players list so UIs can show skull)
             meta.setdefault('eliminated', {})[eliminated] = True
-            await sio.emit('vote_result', {'result': 'eliminated', 'player': {'id': eliminated_player.get('id'), 'name': eliminated_player.get('name'), 'role': role}}, room=room)
+            await sio.emit('vote_result', {
+                'result': 'eliminated', 
+                'player': {'id': eliminated_player.get('id'), 'name': eliminated_player.get('name'), 'role': role},
+                'vote_count': max_votes,
+                'skip_count': skip_count,
+                'counts': counts
+            }, room=room)
             meta['phase'] = 'post_vote'
             # after elimination, you may want to check win conditions (not implemented)
             # check win conditions after elimination
@@ -1191,7 +1221,15 @@ async def _resolve_votes(room: str):
                 asyncio.create_task(_next_night())
             return
     # no elimination
-    await sio.emit('vote_result', {'result': 'no_elimination', 'top': top, 'counts': counts}, room=room)
+    reason = 'tie' if len(top) > 1 else 'skips_majority' if skip_count >= max_votes else 'unknown'
+    await sio.emit('vote_result', {
+        'result': 'no_elimination', 
+        'reason': reason,
+        'top': top, 
+        'counts': counts, 
+        'skip_count': skip_count,
+        'max_votes': max_votes
+    }, room=room)
     meta['phase'] = 'post_vote'
     # check win conditions and continue the game if nobody has won
     await _check_win_conditions(room)
