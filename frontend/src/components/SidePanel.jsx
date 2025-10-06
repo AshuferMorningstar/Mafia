@@ -2,7 +2,7 @@ import React from 'react';
 import '../styles.css';
 
 export default function SidePanel({ onTabSelect, activeTab = 'How to Play' }) {
-  const tabs = ['How to Play', 'Roles Info', 'Game Tips', 'About', 'Settings'];
+  const tabs = ['How to Play', 'Roles Info', 'Game Tips', 'About'];
 
   return (
     <aside className="side-panel">
@@ -19,7 +19,7 @@ export default function SidePanel({ onTabSelect, activeTab = 'How to Play' }) {
             aria-pressed={t === activeTab}
           >
             <span className="tab-icon" aria-hidden>
-              {t === 'How to Play' ? '📘' : t === 'Roles Info' ? '🎭' : t === 'Game Tips' ? '💡' : t === 'About' ? 'ℹ️' : '⚙️'}
+              {t === 'How to Play' ? '📘' : t === 'Roles Info' ? '🎭' : t === 'Game Tips' ? '💡' : 'ℹ️'}
             </span>
             <span className="tab-label">{t}</span>
           </button>

@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import '../styles.css';
 
 export default function TopDashboard({ onMenuToggle, onTabSelect, activeTab = 'How to Play' }) {
-  const tabs = ['How to Play', 'Roles Info', 'Game Tips', 'About', 'Settings'];
+  const tabs = ['How to Play', 'Roles Info', 'Game Tips', 'About'];
   const [open, setOpen] = useState(false);
   const popRef = useRef(null);
 
@@ -43,7 +43,7 @@ export default function TopDashboard({ onMenuToggle, onTabSelect, activeTab = 'H
             {tabs.map((t) => (
               <button key={t} className={`panel-tab ${t === activeTab ? 'active' : ''}`} onClick={() => handleTab(t)} aria-pressed={t === activeTab}>
                 <span className="tab-icon" aria-hidden>
-                  {t === 'How to Play' ? '📘' : t === 'Roles Info' ? '🎭' : t === 'Game Tips' ? '💡' : t === 'About' ? 'ℹ️' : '⚙️'}
+                  {t === 'How to Play' ? '📘' : t === 'Roles Info' ? '🎭' : t === 'Game Tips' ? '💡' : 'ℹ️'}
                 </span>
                 <span className="tab-label">{t}</span>
               </button>

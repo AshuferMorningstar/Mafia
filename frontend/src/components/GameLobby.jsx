@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import '../styles.css';
 import socket from '../lib/socket';
 
-export default function GameLobby({ roomCode = '7XYRGF', players = ['Alice','Bob','Charlie','David'], isHost = true, hostId: initialHostId = null, playerName = null, settings = {}, onStart = () => {}, onClose = () => {}, onLeave = () => {}, onOpenSettings = () => {} }) {
+export default function GameLobby({ roomCode = '7XYRGF', players = ['Alice','Bob','Charlie','David'], isHost = true, hostId: initialHostId = null, playerName = null, settings = {}, onStart = () => {}, onClose = () => {}, onLeave = () => {} }) {
   const [activeTab, setActiveTab] = useState('players');
   const [playerList, setPlayerList] = useState(players);
   const [hostId, setHostId] = useState(initialHostId || null);
@@ -271,7 +271,6 @@ export default function GameLobby({ roomCode = '7XYRGF', players = ['Alice','Bob
         {((hostId && meRef.current && meRef.current.id === hostId) || isHost) ? (
           <>
             <button className="lobby-action start" onClick={onStart}>START GAME</button>
-            <button className="lobby-action settings" onClick={onOpenSettings}>SETTINGS</button>
             <button className="lobby-action close" onClick={onClose}>CLOSE ROOM</button>
           </>
         ) : (

@@ -202,49 +202,7 @@ export default function App() {
       );
     }
 
-    if (tab === 'Settings') {
-      return (
-        <div className="panel-body">
-          <h4 className="panel-heading">Game Settings</h4>
-          <div className="panel-section">
-            <label className="panel-label" htmlFor="settings-killers">Number of Killers</label>
-            <div>
-              <PortalSelect
-                id="settings-killers"
-                className="panel-select"
-                value={settings.killCount}
-                onChange={(e) => setSettings((s) => ({ ...s, killCount: Number(e.target.value) }))}
-                options={[1,2,3].map((n) => ({ value: n, label: String(n) }))}
-              />
-            </div>
-            
-            <div className="panel-section">
-              <label className="panel-label" htmlFor="settings-doctors">Doctors</label>
-              <PortalSelect
-                id="settings-doctors"
-                className="panel-select"
-                value={settings.doctorCount}
-                onChange={(e) => setSettings((s) => ({ ...s, doctorCount: Number(e.target.value) }))}
-                options={[0,1,2].map((n) => ({ value: n, label: String(n) }))}
-              />
-            </div>
 
-            <div className="panel-section">
-              <label className="panel-label" htmlFor="settings-detectives">Detectives</label>
-              <PortalSelect
-                id="settings-detectives"
-                className="panel-select"
-                value={settings.detectiveCount}
-                onChange={(e) => setSettings((s) => ({ ...s, detectiveCount: Number(e.target.value) }))}
-                options={[0,1,2].map((n) => ({ value: n, label: String(n) }))}
-              />
-            </div>
-
-            <div className="panel-note">Settings are saved locally and applied when creating a room.</div>
-          </div>
-        </div>
-      );
-    }
 
     return <div className="panel-placeholder">Content for {tab} will go here — paste your text and I'll render it.</div>;
   }
@@ -282,7 +240,6 @@ export default function App() {
             onLeave={() => { setPage('home'); setLobby(null); }}
             onStart={() => { setPage('game'); }}
             onClose={() => { setPage('home'); setLobby(null); }}
-            onOpenSettings={() => { setActiveTab('Settings'); setPanelOpen(true); }}
           />
         )}
         {page === 'game' && (
