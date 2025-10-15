@@ -308,7 +308,7 @@ async def handle_join(sid, data):
     if not meta.get('host_id'):
         meta['host_id'] = player.get('id')
     await sio.save_session(sid, {'room': room, 'player': player})
-    sio.enter_room(sid, room)
+    await sio.enter_room(sid, room)
     # broadcast to room
     await sio.emit('player_joined', {'player': player}, room=room)
     # also emit a room_state update (players + host)
@@ -609,12 +609,12 @@ async def handle_player_ready(sid, data):
                         # server-side: place each active socket into private rooms so server can emit to them
                         if p.get('role') == 'Killer':
                             try:
-                                sio.enter_room(psid, killer_room)
+                                await sio.enter_room(psid, killer_room)
                             except Exception:
                                 pass
                         if p.get('role') == 'Doctor':
                             try:
-                                sio.enter_room(psid, doctor_room)
+                                await sio.enter_room(psid, doctor_room)
                             except Exception:
                                 pass
                     except Exception as e:
