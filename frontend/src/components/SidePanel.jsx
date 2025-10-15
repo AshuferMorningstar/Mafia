@@ -26,7 +26,7 @@ export default function SidePanel({ onTabSelect, activeTab = 'How to Play' }) {
         ))}
       </nav>
 
-      <div className="panel-footer">v0.1</div>
+      <div className="panel-footer">made with ❤️ by Ashufer</div>
     </aside>
   );
 }
