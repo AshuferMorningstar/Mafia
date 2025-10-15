@@ -28,6 +28,12 @@ async def read_root():
     return {"message": "Mafia backend is running!"}
 
 
+# Add HEAD support for uptime monitors (e.g., UptimeRobot free plan)
+@app.head("/")
+async def root_head():
+    return {}
+
+
 # in-memory room player list
 _rooms = {}
 # room metadata (e.g., host id)
