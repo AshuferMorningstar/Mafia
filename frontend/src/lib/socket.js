@@ -1,7 +1,7 @@
 import { io } from 'socket.io-client';
 
 // Change this to your backend URL if different. Use backend root (client will talk to /socket.io).
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:8000';
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://mafia-c6xl.onrender.com';
 
 // Create socket and export. Keep autoConnect false so callers control when to connect.
 export const socket = io(SOCKET_URL, {
