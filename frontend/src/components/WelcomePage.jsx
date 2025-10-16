@@ -1,7 +1,40 @@
-import React from 'react';
+import React, { useState, startTransition } from 'react';
 import '../styles.css';
 
 export default function WelcomePage({ onStart, onCreate, onJoin }) {
+  const [pressed, setPressed] = useState(false);
+
+  // Trigger handler with immediate visual feedback, then run the action
+  // on the next frame and inside startTransition so the browser can paint
+  const triggerAction = (handler) => (event) => {
+    // immediate visual feedback
+    setPressed(true);
+
+    // let the browser paint the pressed state, then run the action
+    requestAnimationFrame(() => {
+      try {
+        if (handler) {
+          // mark as non-urgent to avoid blocking responsiveness
+          if (typeof startTransition === 'function') {
+            startTransition(() => handler(event));
+          } else {
+            handler(event);
+          }
+        }
+      } finally {
+        // clear pressed class shortly after
+        setTimeout(() => setPressed(false), 160);
+      }
+    });
+  };
+
+  const triggerKey = (handler) => (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      triggerAction(handler)(e);
+    }
+  };
+
   return (
     <div className="welcome-root">
       <svg width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -35,8 +68,23 @@ export default function WelcomePage({ onStart, onCreate, onJoin }) {
     <h1 className="welcome-title metallic-gradient shine-animated">Mafia Game</h1>
   <p className="welcome-sub metallic-gradient shine-animated">A thrilling game of deception and strategy</p>
       <div className="welcome-actions">
-        <button className="welcome-start" onClick={onCreate || onStart}>Create a Room</button>
-        <button className="welcome-join" onClick={onJoin || onStart}>Join Game</button>
+        <button
+          className={`welcome-start ${pressed ? 'pressed' : ''}`}
+          onPointerDown={triggerAction(onCreate || onStart)}
+          onKeyDown={triggerKey(onCreate || onStart)}
+          onClick={(e) => { /* fallback in case pointer events aren't available */ (onCreate || onStart)?.(e); }}
+        >
+          Create a Room
+        </button>
+
+        <button
+          className="welcome-join"
+          onPointerDown={triggerAction(onJoin || onStart)}
+          onKeyDown={triggerKey(onJoin || onStart)}
+          onClick={(e) => { /* fallback */ (onJoin || onStart)?.(e); }}
+        >
+          Join Game
+        </button>
       </div>
     </div>
   );

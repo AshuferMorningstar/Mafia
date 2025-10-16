@@ -371,6 +371,12 @@ html, body, #root {
 .welcome-start:active, .welcome-join:active{transform: translateY(-1px) scale(0.995)}
 .welcome-start:focus-visible, .welcome-join:focus-visible{outline:3px solid rgba(246,210,122,0.25);outline-offset:4px}
 
+/* Immediate pressed state applied via JS on pointerdown to improve INP */
+.welcome-start.pressed, .welcome-join.pressed {
+  transform: translateY(-1px) scale(0.995);
+  transition: transform 80ms ease;
+}
+
 /* App layout: side panel (desktop) + top dashboard (mobile) */
 .app-layout{display:flex;min-height:100vh;height:100vh;background:var(--bg);color:var(--text)}
 .side-panel{width:240px;background:var(--splash-bg);padding:18px;display:flex;flex-direction:column;align-items:flex-start;gap:18px;box-shadow: 6px 0 18px rgba(0,0,0,0.35);transition: box-shadow 180ms ease, transform 180ms ease;position:relative;z-index:2}
